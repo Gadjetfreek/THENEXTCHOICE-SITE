@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>The Next Choice</title>
+  <meta name="description" content="The future is cultivated one choice at a time." />
+  <meta property="og:title" content="The Next Choice" />
+  <meta property="og:description" content="The future is cultivated one choice at a time." />
+  <meta property="og:type" content="website" />
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #0a0d0c;
+      --panel: #111614;
+      --text: #f3f4ef;
+      --muted: #aab3ac;
+      --line: #26302b;
+      --accent: #d9e7d8;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background:
+        radial-gradient(circle at 50% 15%, rgba(111, 150, 126, .14), transparent 34rem),
+        var(--bg);
+      color: var(--text);
+      display: grid;
+      place-items: center;
+    }
+    main {
+      width: min(760px, calc(100% - 40px));
+      padding: 72px 0 56px;
+      text-align: center;
+    }
+    .eyebrow {
+      margin: 0 0 18px;
+      font-size: .74rem;
+      letter-spacing: .22em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+    h1 {
+      margin: 0;
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: clamp(3.2rem, 10vw, 7rem);
+      line-height: .94;
+      font-weight: 500;
+      letter-spacing: -.045em;
+    }
+    .tagline {
+      margin: 26px auto 0;
+      max-width: 34rem;
+      color: var(--muted);
+      font-size: clamp(1rem, 2.5vw, 1.22rem);
+      line-height: 1.6;
+    }
+    .experiment {
+      margin: 56px auto 0;
+      padding: 34px 30px 30px;
+      background: color-mix(in srgb, var(--panel) 94%, transparent);
+      border: 1px solid var(--line);
+      border-radius: 24px;
+      box-shadow: 0 24px 80px rgba(0,0,0,.28);
+    }
+    .experiment-label {
+      margin: 0 0 18px;
+      color: var(--muted);
+      font-size: .76rem;
+      letter-spacing: .16em;
+      text-transform: uppercase;
+    }
+    .question {
+      margin: 0 auto;
+      max-width: 30rem;
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: clamp(1.65rem, 4vw, 2.45rem);
+      line-height: 1.2;
+      font-weight: 400;
+    }
+    .listen {
+      margin-top: 26px;
+      appearance: none;
+      border: 1px solid #46534c;
+      background: transparent;
+      color: var(--text);
+      border-radius: 999px;
+      padding: 12px 18px;
+      font: inherit;
+      cursor: pointer;
+      transition: transform .15s ease, background .15s ease;
+    }
+    .listen:hover { background: #171d1a; transform: translateY(-1px); }
+    .listen:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; }
+    .prompt {
+      margin: 22px auto 0;
+      max-width: 31rem;
+      color: var(--muted);
+      font-size: .95rem;
+      line-height: 1.55;
+    }
+    .about {
+      margin: 54px auto 0;
+      max-width: 38rem;
+      padding-top: 34px;
+      border-top: 1px solid var(--line);
+      color: var(--muted);
+      font-size: .98rem;
+      line-height: 1.75;
+    }
+    .about strong { color: var(--text); font-weight: 560; }
+    footer {
+      margin-top: 54px;
+      color: #747d77;
+      font-size: .82rem;
+    }
+    @media (max-width: 520px) {
+      main { width: min(100% - 26px, 760px); padding-top: 52px; }
+      .experiment { padding: 28px 20px 24px; border-radius: 20px; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <p class="eyebrow">An ongoing exploration in human flourishing</p>
+    <h1>The Next Choice</h1>
+    <p class="tagline">The future is cultivated one choice at a time.</p>
+
+    <section class="experiment" aria-labelledby="current-question">
+      <p class="experiment-label">A question for this moment</p>
+      <h2 class="question" id="current-question">Are you trying to be understood — or understand?</h2>
+      <button class="listen" id="listen" type="button">▶ Hear the question</button>
+      <p class="prompt">There is no answer to submit. Just notice what changes when you give the question a little room.</p>
+    </section>
+
+    <section class="about">
+      <p><strong>The Next Choice</strong> explores a simple possibility: technology should not replace human judgment. It should help us cultivate it.</p>
+      <p>We are experimenting with ways to create more room for attention, perspective, wisdom, relationship, and better choices — while keeping the human fully in charge.</p>
+      <p>This page will evolve as the experiment evolves. The invitation will remain the same.</p>
+    </section>
+
+    <footer>The Human Story is not even close to finished.</footer>
+  </main>
+
+  <script>
+    const button = document.getElementById('listen');
+    const question = document.getElementById('current-question').textContent.trim();
+
+    button.addEventListener('click', () => {
+      if (!('speechSynthesis' in window)) {
+        button.textContent = 'Audio is not supported in this browser';
+        button.disabled = true;
+        return;
+      }
+
+      window.speechSynthesis.cancel();
+      const utterance = new SpeechSynthesisUtterance(question);
+      utterance.rate = 0.86;
+      utterance.pitch = 0.96;
+      utterance.onstart = () => { button.textContent = '■ Stop'; };
+
+      if (button.dataset.playing === 'true') {
+        window.speechSynthesis.cancel();
+        button.dataset.playing = 'false';
+        button.textContent = '▶ Hear the question';
+        return;
+      }
+
+      button.dataset.playing = 'true';
+      utterance.onend = () => {
+        button.dataset.playing = 'false';
+        button.textContent = '▶ Hear the question';
+      };
+      window.speechSynthesis.speak(utterance);
+    });
+  </script>
+</body>
+</html>
