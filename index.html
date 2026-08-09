@@ -85,6 +85,7 @@
       font-weight: 400;
     }
     .listen {
+      display: inline-block;
       margin-top: 26px;
       appearance: none;
       border: 1px solid #5a695f;
@@ -94,6 +95,7 @@
       padding: 12px 18px;
       font: inherit;
       cursor: pointer;
+      text-decoration: none;
       transition: transform .15s ease, background .15s ease;
     }
     .listen:hover { background: #1c2520; transform: translateY(-1px); }
@@ -135,8 +137,8 @@
     <section class="experiment" aria-labelledby="current-question">
       <p class="experiment-label">A question for this moment</p>
       <h2 class="question" id="current-question">Are you trying to be understood — or understand?</h2>
-      <button class="listen" id="listen" type="button">▶ Hear the question</button>
-      <p class="prompt">There is no answer to submit. Just notice what changes when you give the question a little room.</p>
+      <a class="listen" href="human-trial/">▶ Enter the listening experiment</a>
+      <p class="prompt">There is no answer to submit here. Give the question a little room — or step into the listening experiment and tell us what you notice.</p>
     </section>
 
     <section class="about">
@@ -147,38 +149,5 @@
 
     <footer>The Human Story is not even close to finished.</footer>
   </main>
-
-  <script>
-    const button = document.getElementById('listen');
-    const question = document.getElementById('current-question').textContent.trim();
-
-    button.addEventListener('click', () => {
-      if (!('speechSynthesis' in window)) {
-        button.textContent = 'Audio is not supported in this browser';
-        button.disabled = true;
-        return;
-      }
-
-      window.speechSynthesis.cancel();
-      const utterance = new SpeechSynthesisUtterance(question);
-      utterance.rate = 0.86;
-      utterance.pitch = 0.96;
-      utterance.onstart = () => { button.textContent = '■ Stop'; };
-
-      if (button.dataset.playing === 'true') {
-        window.speechSynthesis.cancel();
-        button.dataset.playing = 'false';
-        button.textContent = '▶ Hear the question';
-        return;
-      }
-
-      button.dataset.playing = 'true';
-      utterance.onend = () => {
-        button.dataset.playing = 'false';
-        button.textContent = '▶ Hear the question';
-      };
-      window.speechSynthesis.speak(utterance);
-    });
-  </script>
 </body>
 </html>
