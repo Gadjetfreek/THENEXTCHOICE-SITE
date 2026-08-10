@@ -13,22 +13,14 @@
     main{width:min(760px,calc(100% - 40px));margin:0 auto;padding:44px 0 64px}
     .top{display:flex;align-items:center;gap:14px;margin-bottom:26px}
     .brand{font-family:Georgia,"Times New Roman",serif;font-size:1.25rem;letter-spacing:-.02em}
-    .spacer{flex:1}
-    .share{appearance:none;border:0;background:none;color:var(--muted);font:inherit;text-decoration:underline;text-underline-offset:3px;cursor:pointer}
-    .status{font-size:.8rem;color:var(--muted)}
+    .spacer{flex:1}.share{appearance:none;border:0;background:none;color:var(--muted);font:inherit;text-decoration:underline;text-underline-offset:3px;cursor:pointer}.status{font-size:.8rem;color:var(--muted)}
     .card{padding:clamp(26px,5vw,44px);background:radial-gradient(circle at 50% 0%,rgba(161,196,173,.12),transparent 24rem),var(--panel);border:1px solid var(--line);border-radius:24px;box-shadow:0 28px 90px rgba(0,0,0,.36),inset 0 1px 0 rgba(255,255,255,.035)}
-    .eyebrow,.muted{color:#c0cac3}.eyebrow{margin:0 0 16px;font-size:.72rem;letter-spacing:.18em;text-transform:uppercase}
-    .step{display:none}.step.active{display:block}
-    h1,h2{font-family:Georgia,"Times New Roman",serif;font-weight:400;letter-spacing:-.025em}
-    h1{font-size:clamp(2.15rem,7vw,3.7rem);line-height:1.02;margin:0 0 18px}h2{font-size:clamp(1.65rem,5vw,2.35rem);line-height:1.15;margin:0 0 18px}
+    .eyebrow,.muted{color:#c0cac3}.eyebrow{margin:0 0 16px;font-size:.72rem;letter-spacing:.18em;text-transform:uppercase}.step{display:none}.step.active{display:block}
+    h1,h2{font-family:Georgia,"Times New Roman",serif;font-weight:400;letter-spacing:-.025em}h1{font-size:clamp(2.15rem,7vw,3.7rem);line-height:1.02;margin:0 0 18px}h2{font-size:clamp(1.65rem,5vw,2.35rem);line-height:1.15;margin:0 0 18px}
     p{color:#b8c2bb;line-height:1.7}strong{color:var(--text)}
     .input,.answer{width:100%;margin-top:8px;padding:14px 15px;border:1px solid #5a695f;border-radius:12px;background:#0e1311;color:var(--text);font:inherit;outline:none}.input:focus,.answer:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(217,231,216,.09)}.answer{min-height:145px;resize:vertical}
-    .btn{display:inline-block;margin-top:18px;appearance:none;border:1px solid #5a695f;border-radius:999px;padding:12px 18px;font:inherit;font-weight:650;cursor:pointer;text-decoration:none;transition:transform .15s ease,background .15s ease}.btn:hover{transform:translateY(-1px)}.primary{background:var(--text);color:#101410;border-color:var(--text)}.secondary{background:rgba(255,255,255,.025);color:var(--text);margin-right:8px}.secondary:hover{background:#1c2520}
-    .audio{width:100%;margin:20px 0 8px;accent-color:#d9e7d8}
-    .error{display:none;color:var(--danger);margin-top:9px}
-    .progress{height:5px;background:#26302b;border-radius:999px;overflow:hidden;margin:4px 0 30px}.progress span{display:block;height:100%;width:20%;background:var(--accent);transition:width .2s ease}
-    .fine{margin-top:26px;font-size:.82rem;color:#7f8982;line-height:1.55}
-    .back{display:inline-block;margin-top:24px;color:#8f9a93;text-decoration:none;font-size:.88rem}.back:hover{color:var(--text)}
+    .btn{display:inline-block;margin-top:18px;appearance:none;border:1px solid #5a695f;border-radius:999px;padding:12px 18px;font:inherit;font-weight:650;cursor:pointer;text-decoration:none;transition:transform .15s ease,background .15s ease}.btn:hover{transform:translateY(-1px)}.btn:focus-visible,.share:focus-visible{outline:2px solid var(--accent);outline-offset:4px}.primary{background:var(--text);color:#101410;border-color:var(--text)}.secondary{background:rgba(255,255,255,.025);color:var(--text);margin-right:8px}.secondary:hover{background:#1c2520}
+    .audio{width:100%;margin:20px 0 8px;accent-color:#d9e7d8}.error{display:none;color:var(--danger);margin-top:9px}.progress{height:5px;background:#26302b;border-radius:999px;overflow:hidden;margin:4px 0 30px}.progress span{display:block;height:100%;width:20%;background:var(--accent);transition:width .2s ease}.fine{margin-top:26px;font-size:.82rem;color:#7f8982;line-height:1.55}.back{display:inline-block;margin-top:24px;color:#8f9a93;text-decoration:none;font-size:.88rem}.back:hover{color:var(--text)}
     @media(max-width:520px){main{width:min(100% - 26px,760px);padding-top:30px}.card{border-radius:20px;padding:28px 20px}.top{margin-bottom:18px}}
   </style>
 </head>
@@ -37,21 +29,21 @@
   <div class="top"><div class="brand">The Next Choice</div><div class="spacer"></div><span id="shareStatus" class="status"></span><button class="share" type="button" onclick="shareTrial()">Share</button></div>
   <div class="card">
     <section id="nameStep" class="step active">
-      <p class="eyebrow">A small human experiment</p>
+      <p class="eyebrow">Help us test a story</p>
       <h1>Before we begin</h1>
       <p>Please enter your first name. Nothing else.</p>
       <input id="firstName" class="input" type="text" autocomplete="given-name" maxlength="40" placeholder="First name" aria-label="First name" />
       <div id="nameError" class="error">Please enter your first name.</div>
       <button class="btn primary" type="button" onclick="startTrial()">Continue</button>
-      <p class="fine">Your first name and answers are used only to help us understand how this story lands with real people.</p>
+      <p class="fine">We only use your first name and answers to learn whether the story makes sense to people.</p>
     </section>
 
     <section id="listenStep" class="step">
       <p class="eyebrow">Listen first</p>
       <h1 id="hello">Thanks.</h1>
-      <p>You’re helping us test whether a story communicates clearly.</p>
-      <p><strong>Please listen from beginning to end without skipping ahead.</strong> There’s nothing you need to study or remember, and there are no right or wrong reactions.</p>
-      <p>When the audio ends, you may replay it <strong>one time</strong> if you’d like. After that, we’ll ask you <strong>five short questions</strong> about what you heard.</p>
+      <p>You’re helping us find out whether this story makes sense without anyone explaining it first.</p>
+      <p><strong>Listen all the way through without skipping ahead.</strong> You do not need to remember everything, and there are no right or wrong answers.</p>
+      <p>When it ends, you can listen <strong>one more time</strong> if you want. Then we’ll ask you <strong>five short questions</strong>.</p>
       <p><strong>Ready? Press Play.</strong></p>
       <audio id="storyAudio" class="audio" controls preload="metadata"><source src="audio/the-next-choice-future-vision-v2-master.mp3" type="audio/mpeg" /></audio>
       <div id="audioError" class="error">The audio could not be loaded. Please refresh and try again.</div>
@@ -72,11 +64,11 @@
       <input type="hidden" name="listens" id="listenCount" value="1" />
       <div class="progress" aria-hidden="true"><span id="trialProgress"></span></div>
 
-      <section class="q step active" data-q="1"><p class="muted">Question 1 of 5</p><h2>What happened in the story?</h2><textarea class="answer" name="q1_story" required></textarea><button type="button" class="btn primary" onclick="nextQ(1)">Continue</button></section>
-      <section class="q step" data-q="2"><p class="muted">Question 2 of 5</p><h2>How did technology help people?</h2><textarea class="answer" name="q2_technology" required></textarea><button type="button" class="btn primary" onclick="nextQ(2)">Continue</button></section>
-      <section class="q step" data-q="3"><p class="muted">Question 3 of 5</p><h2>What do you think changed when technology began giving people more time, attention, and perspective?</h2><textarea class="answer" name="q3_change" required></textarea><button type="button" class="btn primary" onclick="nextQ(3)">Continue</button></section>
-      <section class="q step" data-q="4"><p class="muted">Question 4 of 5</p><h2>What was different about the future described in the story?</h2><textarea class="answer" name="q4_future" required></textarea><button type="button" class="btn primary" onclick="nextQ(4)">Continue</button></section>
-      <section class="q step" data-q="5"><p class="muted">Question 5 of 5</p><h2>What do you think “the next choice” means?</h2><textarea class="answer" name="q5_next_choice" required></textarea><button type="submit" class="btn primary">Submit answers</button></section>
+      <section class="q step active" data-q="1"><p class="muted">Question 1 of 5</p><h2 id="q1label">What happened in the story?</h2><textarea class="answer" name="q1_story" aria-labelledby="q1label" required></textarea><button type="button" class="btn primary" onclick="nextQ(1)">Continue</button></section>
+      <section class="q step" data-q="2"><p class="muted">Question 2 of 5</p><h2 id="q2label">How did technology help people?</h2><textarea class="answer" name="q2_technology" aria-labelledby="q2label" required></textarea><button type="button" class="btn primary" onclick="nextQ(2)">Continue</button></section>
+      <section class="q step" data-q="3"><p class="muted">Question 3 of 5</p><h2 id="q3label">What changed when technology started giving people some of their time back?</h2><textarea class="answer" name="q3_change" aria-labelledby="q3label" required></textarea><button type="button" class="btn primary" onclick="nextQ(3)">Continue</button></section>
+      <section class="q step" data-q="4"><p class="muted">Question 4 of 5</p><h2 id="q4label">What was different about the future in the story?</h2><textarea class="answer" name="q4_future" aria-labelledby="q4label" required></textarea><button type="button" class="btn primary" onclick="nextQ(4)">Continue</button></section>
+      <section class="q step" data-q="5"><p class="muted">Question 5 of 5</p><h2 id="q5label">What do you think “The Next Choice” means?</h2><textarea class="answer" name="q5_next_choice" aria-labelledby="q5label" required></textarea><button type="submit" class="btn primary">Submit answers</button></section>
     </form>
   </div>
   <a class="back" href="../">← Back to The Next Choice</a>
