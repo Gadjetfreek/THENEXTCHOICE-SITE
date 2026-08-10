@@ -9,144 +9,27 @@
   <meta property="og:description" content="The future is cultivated one choice at a time." />
   <meta property="og:type" content="website" />
   <style>
-    :root {
-      color-scheme: dark;
-      --bg: #0a0d0c;
-      --panel: #151c18;
-      --text: #f3f4ef;
-      --muted: #aab3ac;
-      --line: #344039;
-      --accent: #d9e7d8;
-    }
-    * { box-sizing: border-box; }
-    body {
-      margin: 0;
-      min-height: 100vh;
-      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      background:
-        radial-gradient(circle at 50% 15%, rgba(111, 150, 126, .14), transparent 34rem),
-        var(--bg);
-      color: var(--text);
-      display: grid;
-      place-items: center;
-    }
-    main {
-      width: min(760px, calc(100% - 40px));
-      padding: 72px 0 56px;
-      text-align: center;
-    }
-    .eyebrow {
-      margin: 0 0 18px;
-      font-size: .74rem;
-      letter-spacing: .22em;
-      text-transform: uppercase;
-      color: var(--muted);
-    }
-    h1 {
-      margin: 0;
-      font-family: Georgia, "Times New Roman", serif;
-      font-size: clamp(3.2rem, 10vw, 7rem);
-      line-height: .94;
-      font-weight: 500;
-      letter-spacing: -.045em;
-    }
-    .tagline {
-      margin: 26px auto 0;
-      max-width: 34rem;
-      color: var(--muted);
-      font-size: clamp(1rem, 2.5vw, 1.22rem);
-      line-height: 1.6;
-    }
-    .experiment {
-      margin: 56px auto 0;
-      padding: 34px 30px 30px;
-      background:
-        radial-gradient(circle at 50% 0%, rgba(161, 196, 173, .12), transparent 24rem),
-        var(--panel);
-      border: 1px solid var(--line);
-      border-radius: 24px;
-      box-shadow:
-        0 28px 90px rgba(0,0,0,.36),
-        inset 0 1px 0 rgba(255,255,255,.035);
-    }
-    .experiment-label {
-      margin: 0 0 18px;
-      color: #c0cac3;
-      font-size: .76rem;
-      letter-spacing: .16em;
-      text-transform: uppercase;
-    }
-    .question {
-      margin: 0 auto;
-      max-width: 30rem;
-      font-family: Georgia, "Times New Roman", serif;
-      font-size: clamp(1.65rem, 4vw, 2.45rem);
-      line-height: 1.2;
-      font-weight: 400;
-    }
-    .listen {
-      display: inline-block;
-      margin-top: 26px;
-      appearance: none;
-      border: 1px solid #5a695f;
-      background: rgba(255,255,255,.025);
-      color: var(--text);
-      border-radius: 999px;
-      padding: 12px 18px;
-      font: inherit;
-      cursor: pointer;
-      text-decoration: none;
-      transition: transform .15s ease, background .15s ease;
-    }
-    .listen:hover { background: #1c2520; transform: translateY(-1px); }
-    .listen:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; }
-    .prompt {
-      margin: 22px auto 0;
-      max-width: 31rem;
-      color: #b8c2bb;
-      font-size: .95rem;
-      line-height: 1.55;
-    }
-    .about {
-      margin: 54px auto 0;
-      max-width: 38rem;
-      padding-top: 34px;
-      border-top: 1px solid var(--line);
-      color: var(--muted);
-      font-size: .98rem;
-      line-height: 1.75;
-    }
-    .about strong { color: var(--text); font-weight: 560; }
-    footer {
-      margin-top: 54px;
-      color: #747d77;
-      font-size: .82rem;
-    }
-    @media (max-width: 520px) {
-      main { width: min(100% - 26px, 760px); padding-top: 52px; }
-      .experiment { padding: 28px 20px 24px; border-radius: 20px; }
-    }
+    :root {color-scheme:dark;--bg:#0a0d0c;--panel:#151c18;--text:#f3f4ef;--muted:#aab3ac;--line:#344039;--accent:#d9e7d8}
+    *{box-sizing:border-box}body{margin:0;min-height:100vh;font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:radial-gradient(circle at 50% 15%,rgba(111,150,126,.14),transparent 34rem),var(--bg);color:var(--text);display:grid;place-items:center}main{width:min(760px,calc(100% - 40px));padding:72px 0 56px;text-align:center}.lang{display:flex;justify-content:center;gap:12px;margin:0 0 28px;font-size:.86rem}.lang a{color:#aab3ac;text-decoration:none}.lang a:hover,.lang a:focus-visible{color:var(--text);text-decoration:underline;text-underline-offset:3px}.lang strong{color:var(--text);font-weight:600}.eyebrow{margin:0 0 18px;font-size:.74rem;letter-spacing:.22em;text-transform:uppercase;color:var(--muted)}h1{margin:0;font-family:Georgia,"Times New Roman",serif;font-size:clamp(3.2rem,10vw,7rem);line-height:.94;font-weight:500;letter-spacing:-.045em}.tagline{margin:26px auto 0;max-width:34rem;color:var(--muted);font-size:clamp(1rem,2.5vw,1.22rem);line-height:1.6}.experiment{margin:56px auto 0;padding:34px 30px 30px;background:radial-gradient(circle at 50% 0%,rgba(161,196,173,.12),transparent 24rem),var(--panel);border:1px solid var(--line);border-radius:24px;box-shadow:0 28px 90px rgba(0,0,0,.36),inset 0 1px 0 rgba(255,255,255,.035)}.experiment-label{margin:0 0 18px;color:#c0cac3;font-size:.76rem;letter-spacing:.16em;text-transform:uppercase}.question{margin:0 auto;max-width:30rem;font-family:Georgia,"Times New Roman",serif;font-size:clamp(1.65rem,4vw,2.45rem);line-height:1.2;font-weight:400}.listen{display:inline-block;margin-top:26px;appearance:none;border:1px solid #5a695f;background:rgba(255,255,255,.025);color:var(--text);border-radius:999px;padding:12px 18px;font:inherit;cursor:pointer;text-decoration:none;transition:transform .15s ease,background .15s ease}.listen:hover{background:#1c2520;transform:translateY(-1px)}.listen:focus-visible{outline:2px solid var(--accent);outline-offset:4px}.prompt{margin:22px auto 0;max-width:31rem;color:#b8c2bb;font-size:.95rem;line-height:1.55}.about{margin:54px auto 0;max-width:38rem;padding-top:34px;border-top:1px solid var(--line);color:var(--muted);font-size:.98rem;line-height:1.75}.about strong{color:var(--text);font-weight:560}footer{margin-top:54px;color:#747d77;font-size:.82rem}@media(max-width:520px){main{width:min(100% - 26px,760px);padding-top:42px}.experiment{padding:28px 20px 24px;border-radius:20px}}
   </style>
 </head>
 <body>
   <main>
+    <nav class="lang" aria-label="Language"><strong>English</strong><a href="it/" lang="it">Italiano</a><a href="ja/" lang="ja">日本語</a></nav>
     <p class="eyebrow">Exploring how we build a better future</p>
     <h1>The Next Choice</h1>
     <p class="tagline">The future is cultivated one choice at a time.</p>
-
     <section class="experiment" aria-labelledby="current-question">
       <p class="experiment-label">A question for this moment</p>
       <h2 class="question" id="current-question">Are you trying to be understood — or understand?</h2>
       <a class="listen" href="human-trial/">▶ Hear the story</a>
       <p class="prompt">There is no right answer. Just give the question a little room — or hear the story and tell us what you noticed.</p>
     </section>
-
     <section class="about">
       <p><strong>The Next Choice</strong> explores a simple idea: what if technology gave us more time to think, notice, listen, and make better choices — instead of always asking for more of our attention?</p>
       <p>We imagine a future where we get better at solving problems together, understanding one another, and caring for the living world we are part of.</p>
       <p>We do not know exactly what that future will look like. That is the point. We are still making it.</p>
     </section>
-
     <footer>The Human Story is not even close to finished.</footer>
   </main>
 </body>
