@@ -20,7 +20,7 @@
     p{color:#b8c2bb;line-height:1.7}strong{color:var(--text)}
     .input,.answer{width:100%;margin-top:8px;padding:14px 15px;border:1px solid #5a695f;border-radius:12px;background:#0e1311;color:var(--text);font:inherit;outline:none}.input:focus,.answer:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(217,231,216,.09)}.answer{min-height:145px;resize:vertical}
     .btn{display:inline-block;margin-top:18px;appearance:none;border:1px solid #5a695f;border-radius:999px;padding:12px 18px;font:inherit;font-weight:650;cursor:pointer;text-decoration:none;transition:transform .15s ease,background .15s ease}.btn:hover{transform:translateY(-1px)}.btn:focus-visible,.share:focus-visible{outline:2px solid var(--accent);outline-offset:4px}.primary{background:var(--text);color:#101410;border-color:var(--text)}.secondary{background:rgba(255,255,255,.025);color:var(--text);margin-right:8px}.secondary:hover{background:#1c2520}
-    .audio{width:100%;margin:20px 0 8px;accent-color:#d9e7d8}.error{display:none;color:var(--danger);margin-top:9px}.progress{height:5px;background:#26302b;border-radius:999px;overflow:hidden;margin:4px 0 30px}.progress span{display:block;height:100%;width:20%;background:var(--accent);transition:width .2s ease}.fine{margin-top:26px;font-size:.82rem;color:#7f8982;line-height:1.55}.back{display:inline-block;margin-top:24px;color:#8f9a93;text-decoration:none;font-size:.88rem}.back:hover{color:var(--text)}
+    .audio{width:100%;margin:20px 0 6px;accent-color:#d9e7d8}.updated{margin:0 0 8px;color:#8f9a93;font-size:.8rem;line-height:1.4}.error{display:none;color:var(--danger);margin-top:9px}.progress{height:5px;background:#26302b;border-radius:999px;overflow:hidden;margin:4px 0 30px}.progress span{display:block;height:100%;width:20%;background:var(--accent);transition:width .2s ease}.fine{margin-top:26px;font-size:.82rem;color:#7f8982;line-height:1.55}.back{display:inline-block;margin-top:24px;color:#8f9a93;text-decoration:none;font-size:.88rem}.back:hover{color:var(--text)}
     @media(max-width:520px){main{width:min(100% - 26px,760px);padding-top:30px}.card{border-radius:20px;padding:28px 20px}.top{margin-bottom:18px}}
   </style>
 </head>
@@ -46,6 +46,7 @@
       <p>When it ends, you can listen <strong>one more time</strong> if you want. Then we’ll ask you <strong>five short questions</strong>.</p>
       <p><strong>Ready? Press Play.</strong></p>
       <audio id="storyAudio" class="audio" controls preload="metadata"><source src="audio/the-next-choice-future-vision-v3-master.mp3" type="audio/mpeg" /></audio>
+      <p class="updated">Latest story update: August 10, 2026 at 11:01 AM ET</p>
       <div id="audioError" class="error">The audio could not be loaded. Please refresh and try again.</div>
       <div id="afterListen" style="display:none">
         <h2>Want to hear it once more?</h2>
