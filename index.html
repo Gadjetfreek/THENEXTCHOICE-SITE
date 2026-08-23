@@ -65,6 +65,7 @@
 
   <script>
     const COLLECTOR_URL='https://script.google.com/macros/s/AKfycbzK2qrq7anACWLKgmGLr5OIS8hu36ok6Vk-PjqnaGOl58QLIKgN3LPsVbL7qspmhDk/exec';
+    const STORAGE_KEY='tnc-response-session-v1';
     const questions=[
       'What should we do with what we are becoming capable of?',
       'What future is this choice helping create?',
@@ -86,40 +87,121 @@
 
     let questionIndex=0;
     let firstName='';
-    const savedQuestions=[];
-    const savedAnswers=[];
+    let hasAdvanced=false;
+    let submitted=false;
+    const responses={};
+    const responseOrder=[];
+
+    function rememberName(){
+      const value=firstNameEl.value.trim();
+      if(value)firstName=value;
+    }
 
     function rememberCurrentAnswer(){
       const answer=answerEl.value.trim();
-      if(!answer)return;
-      const currentQuestion=questionEl.textContent.trim();
-      const existingIndex=savedQuestions.indexOf(currentQuestion);
-      if(existingIndex>=0){
-        savedAnswers[existingIndex]=answer;
-      }else if(savedQuestions.length<5){
-        savedQuestions.push(currentQuestion);
-        savedAnswers.push(answer);
+      const key=String(questionIndex);
+      if(answer){
+        responses[key]=answer;
+        if(!responseOrder.includes(key)&&responseOrder.length<5)responseOrder.push(key);
+      }else if(Object.prototype.hasOwnProperty.call(responses,key)){
+        delete responses[key];
+        const orderIndex=responseOrder.indexOf(key);
+        if(orderIndex>=0)responseOrder.splice(orderIndex,1);
       }
     }
 
-    function rememberName(){
-      if(!firstName)firstName=firstNameEl.value.trim();
+    function persistSession(){
+      if(submitted)return;
+      try{
+        sessionStorage.setItem(STORAGE_KEY,JSON.stringify({
+          questionIndex,
+          firstName,
+          hasAdvanced,
+          responses,
+          responseOrder
+        }));
+      }catch(error){
+        console.warn('Unable to preserve response session.',error);
+      }
+    }
+
+    function restoreQuestion(index,{focus=false}={}){
+      questionIndex=Math.max(0,Math.min(questions.length-1,Number(index)||0));
+      questionEl.textContent=questions[questionIndex];
+      firstNameEl.value=firstName;
+      nameField.hidden=hasAdvanced;
+      answerEl.value=responses[String(questionIndex)]||'';
+      statusEl.textContent='';
+      if(focus)answerEl.focus();
+    }
+
+    function loadSession(){
+      try{
+        const saved=JSON.parse(sessionStorage.getItem(STORAGE_KEY)||'null');
+        if(!saved||typeof saved!=='object')return;
+        questionIndex=Math.max(0,Math.min(questions.length-1,Number(saved.questionIndex)||0));
+        firstName=typeof saved.firstName==='string'?saved.firstName:'';
+        hasAdvanced=Boolean(saved.hasAdvanced);
+        if(saved.responses&&typeof saved.responses==='object'){
+          Object.entries(saved.responses).forEach(([key,value])=>{
+            if(/^\d+$/.test(key)&&typeof value==='string'&&value.trim())responses[key]=value;
+          });
+        }
+        if(Array.isArray(saved.responseOrder)){
+          saved.responseOrder.forEach(key=>{
+            const normalized=String(key);
+            if(Object.prototype.hasOwnProperty.call(responses,normalized)&&!responseOrder.includes(normalized)&&responseOrder.length<5){
+              responseOrder.push(normalized);
+            }
+          });
+        }
+      }catch(error){
+        sessionStorage.removeItem(STORAGE_KEY);
+      }
     }
 
     function showNextQuestion(){
       rememberName();
       rememberCurrentAnswer();
-      nameField.hidden=true;
-      answerEl.value='';
-      statusEl.textContent='';
+      hasAdvanced=true;
+      questionIndex=(questionIndex+1)%questions.length;
+      persistSession();
+      history.pushState({tncQuestion:true,questionIndex},'',location.href);
       questionEl.classList.add('changing');
       window.setTimeout(()=>{
-        questionIndex=(questionIndex+1)%questions.length;
-        questionEl.textContent=questions[questionIndex];
+        restoreQuestion(questionIndex,{focus:true});
         questionEl.classList.remove('changing');
-        answerEl.focus();
       },180);
     }
+
+    loadSession();
+    restoreQuestion(questionIndex);
+    history.replaceState({tncQuestion:true,questionIndex},'',location.href);
+
+    firstNameEl.addEventListener('input',()=>{
+      firstName=firstNameEl.value.trim();
+      persistSession();
+    });
+
+    answerEl.addEventListener('input',()=>{
+      rememberCurrentAnswer();
+      persistSession();
+    });
+
+    window.addEventListener('popstate',event=>{
+      if(!event.state||event.state.tncQuestion!==true)return;
+      rememberName();
+      rememberCurrentAnswer();
+      persistSession();
+      restoreQuestion(event.state.questionIndex,{focus:true});
+      persistSession();
+    });
+
+    window.addEventListener('pagehide',()=>{
+      rememberName();
+      rememberCurrentAnswer();
+      persistSession();
+    });
 
     nextButton.addEventListener('click',showNextQuestion);
 
@@ -127,8 +209,10 @@
       event.preventDefault();
       rememberName();
       rememberCurrentAnswer();
+      persistSession();
 
-      if(!savedAnswers.length){
+      const orderedKeys=responseOrder.filter(key=>responses[key]).slice(0,5);
+      if(!orderedKeys.length){
         statusEl.textContent='Write a response first, or choose another question.';
         answerEl.focus();
         return;
@@ -140,8 +224,8 @@
 
       const payload={
         firstName,
-        questions:savedQuestions.slice(0,5),
-        answers:savedAnswers.slice(0,5),
+        questions:orderedKeys.map(key=>questions[Number(key)]),
+        answers:orderedKeys.map(key=>responses[key]),
         website:websiteEl.value
       };
 
@@ -153,16 +237,21 @@
         });
         const result=await response.json();
         if(!result.ok)throw new Error(result.error||'Unable to save response.');
+        submitted=true;
+        sessionStorage.removeItem(STORAGE_KEY);
         answerEl.value='';
-        statusEl.textContent=savedAnswers.length===1
+        submitButton.textContent='Shared';
+        statusEl.textContent=orderedKeys.length===1
           ? 'Thank you. Your response was shared.'
           : 'Thank you. Your responses were shared.';
       }catch(error){
         console.error(error);
         statusEl.textContent='We could not save that response. Please try again.';
       }finally{
-        submitButton.disabled=false;
-        nextButton.disabled=false;
+        if(!submitted){
+          submitButton.disabled=false;
+          nextButton.disabled=false;
+        }
       }
     });
   </script>
