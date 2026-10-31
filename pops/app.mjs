@@ -8,6 +8,9 @@ import {
   dayKey, eveningSafety, formatTime, knownPeople, parseICSEvents, probeFor, questionForDate, reflectionStats, reminderDue,
   statsLine, suggestsDecision
 } from "./evening.mjs";
+import {
+  DEFAULT_MORNING_REMINDER, INTENTION_CHIPS, INTENTION_PROMPT, MORNING_KEYS, createMorningEntry, lineForDate, morningIntentionFor
+} from "./morning.mjs";
 
 const app = document.querySelector("#app");
 const toast = document.querySelector("#toast");
@@ -30,6 +33,8 @@ const state = {
   storageOk: storageAvailable(),
   evening: null, // the active evening walk — memory only until Save
   eveningSettings: { time: DEFAULT_REMINDER, notify: false, ...readJSON(EVENING_KEYS.settings, {}) },
+  morning: null, // the intention being picked — memory only until Save
+  morningSettings: { time: DEFAULT_MORNING_REMINDER, ...readJSON(MORNING_KEYS.settings, {}) },
   calendarChips: [] // titles read from a picked .ics file — memory only, never stored
 };
 
@@ -63,6 +68,7 @@ const ICONS = {
   trash: '<path d="M4 7h16M9 7V4h6v3m3 0-1 14H7L6 7m4 4v6m4-6v6"/>',
   heart: '<path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10Z"/>',
   plus: '<path d="M12 5v14M5 12h14"/>',
+  sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
   moon: '<path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5Z"/>'
 };
 function icon(name) { return `<svg class="icon" viewBox="0 0 24 24" aria-hidden="true">${ICONS[name]}</svg>`; }
@@ -95,11 +101,12 @@ function renderHome() {
         <button class="journal-shortcut" data-action="journal" aria-label="Open Journal">${icon("journal")}<span>Journal${state.journal.length ? ` · ${state.journal.length}` : ""}</span></button>
       </div>
     </div>
+    ${eveningBanner()}
+    ${morningHomeCard()}
     <button class="current-card" data-action="current">
       <span>${icon("current")}<small>Current</small></span>
       <strong>${escapeHTML(state.current)}</strong>
     </button>
-    ${eveningHomeCard()}
     ${setupHomeCard()}
     <div class="action-grid" aria-label="POPS sections">
       ${tile("attend", "Attend", true)}${tile("relate", "Relate", true)}
@@ -110,6 +117,7 @@ function renderHome() {
       <span>${icon("next")}<span><small>Next</small><strong>Likely interruption or obligation</strong></span></span>
       <em>${escapeHTML(nudgeSummary(state.nudges))}</em>
     </button>
+    ${eveningHomeCard()}
     <p class="privacy-line">${icon("lock")} Nothing leaves this device. No account, no AI model, no server. Only what you choose to Save is kept, in this browser.</p>
     ${state.storageOk ? "" : '<p class="warning">This browser is blocking local storage (private mode?). Reflections work, but Journal saves won’t stick.</p>'}
     ${helpLink}
@@ -272,6 +280,7 @@ function renderCrisis() {
       <div class="crisis-resume">
         ${state.session && !isComplete(state.session) && state.crisisFrom === "input" ? '<button data-action="crisis-resume">I’m safe right now — continue the reflection</button>' : ""}
         ${state.crisisFrom === "direct" && state.session ? '<button data-action="crisis-resume">I’m okay — go back</button>' : ""}
+        ${state.crisisFrom === "morning" ? '<button data-mo="open-keep">I’m safe right now — go back</button>' : ""}
         ${state.evening && state.crisisFrom === "evening" ? '<button data-eva="resume">I’m safe right now — continue the reflection</button>' : ""}
         <button data-action="crisis-end">End and return home</button>
       </div>
@@ -305,8 +314,8 @@ function journalAdd() {
 function journalRead() {
   if (!state.journal.length) return `<div class="card empty"><p>No Journal entries yet.</p><p class="field-note">Finish a Pause and tap Save, or add a note in your own words.</p><button class="primary" data-journal-mode="add">Add your first entry</button></div>`;
   return `<div class="entry-list">${state.journal.map(e => `<article class="card entry">
-      <div class="entry-meta"><span class="kind ${e.kind}">${e.kind === "decision" ? "Decision card" : e.kind === "reflection" ? "Evening reflection" : "Note"}</span><time>${formatDate(e.createdAt)}</time></div>
-      ${e.kind === "reflection" ? `<h3>${escapeHTML(e.question)}</h3><p>${escapeHTML(e.answers.reflect || e.answers.answer || e.answers.observe || e.answers.probe || "Kept")}</p>` : e.kind === "decision" ? `<h3>${escapeHTML(e.title)}</h3><p>${e.card.selection ? `<strong>Your choice:</strong> ${escapeHTML(e.card.selection)}` : "No path named"}</p>` : `<p>${escapeHTML(e.originalText)}</p>`}
+      <div class="entry-meta"><span class="kind ${e.kind}">${e.kind === "decision" ? "Decision card" : e.kind === "reflection" ? "Evening reflection" : e.kind === "morning" ? "Morning intention" : "Note"}</span><time>${formatDate(e.createdAt)}</time></div>
+      ${e.kind === "morning" ? `<h3>${escapeHTML(e.intention)}</h3><p>${escapeHTML(e.line)}</p>` : e.kind === "reflection" ? `<h3>${escapeHTML(e.question)}</h3><p>${escapeHTML(e.answers.reflect || e.answers.answer || e.answers.observe || e.answers.probe || "Kept")}</p>` : e.kind === "decision" ? `<h3>${escapeHTML(e.title)}</h3><p>${e.card.selection ? `<strong>Your choice:</strong> ${escapeHTML(e.card.selection)}` : "No path named"}</p>` : `<p>${escapeHTML(e.originalText)}</p>`}
       <div><button data-open="${e.id}">${e.kind === "decision" ? "Open card" : e.kind === "reflection" ? "Open reflection" : "View source"}</button><button class="danger" data-delete="${e.id}">${icon("trash")} Delete</button></div>
     </article>`).join("")}</div>
     <div class="journal-footer"><button data-action="export">Download a copy (JSON)</button><button class="danger-text" data-action="delete-all">Delete everything</button></div>`;
@@ -314,8 +323,8 @@ function journalRead() {
 
 function entryPanel(entry) {
   return `<div class="modal-backdrop" data-action="close-entry"><article class="source-panel" role="dialog" aria-modal="true" aria-labelledby="entry-title" data-panel>
-    <p class="eyebrow">${entry.kind === "decision" ? "Saved decision card" : entry.kind === "reflection" ? `Evening reflection · ${escapeHTML(entry.day || "")}` : "Narrative → source"}</p>
-    <h2 id="entry-title">${escapeHTML(entry.kind === "decision" ? entry.title : entry.kind === "reflection" ? "Your evening, in your words" : "Original entry")}</h2>
+    <p class="eyebrow">${entry.kind === "decision" ? "Saved decision card" : entry.kind === "reflection" ? `Evening reflection · ${escapeHTML(entry.day || "")}` : entry.kind === "morning" ? `Morning intention · ${escapeHTML(entry.day || "")}` : "Narrative → source"}</p>
+    <h2 id="entry-title">${escapeHTML(entry.kind === "decision" ? entry.title : entry.kind === "reflection" ? "Your evening, in your words" : entry.kind === "morning" ? "A decision to handle well" : "Original entry")}</h2>
     ${entry.kind === "decision" ? `<p class="handback">${escapeHTML(entry.card.handback)}</p>${cardFields(entry.card, false)}` : `<blockquote>${escapeHTML(entry.originalText)}</blockquote>`}
     <dl class="meta"><div><dt>Source</dt><dd>${escapeHTML(entry.source)}</dd></div><div><dt>Saved</dt><dd>${escapeHTML(formatDate(entry.createdAt, true))}</dd></div></dl>
     <p class="field-note">No transcript was kept. No inferred relationship or meaning has been saved as fact.</p>
@@ -347,7 +356,7 @@ function formatDate(value, full = false) {
   return new Intl.DateTimeFormat(undefined, full ? { dateStyle: "full", timeStyle: "long" } : { dateStyle: "medium", timeStyle: "short" }).format(new Date(value));
 }
 
-const VIEWS = { settings: renderSettings, home: renderHome, about: renderAbout, current: renderCurrent, start: renderStart, flow: renderFlow, crisis: renderCrisis, journal: renderJournal, next: renderNext, evening: renderEvening, setup: renderSetup, reminders: renderSetup };
+const VIEWS = { settings: renderSettings, home: renderHome, about: renderAbout, current: renderCurrent, start: renderStart, flow: renderFlow, crisis: renderCrisis, journal: renderJournal, next: renderNext, evening: renderEvening, setup: renderSetup, reminders: renderSetup, morning: renderMorning };
 function render(focus = true) {
   (VIEWS[state.view] || renderHome)();
   if (focus) {
@@ -523,11 +532,63 @@ function clearEveningLink() {
   if (location.hash === "#evening" || /[?&]open=evening/.test(location.search)) history.replaceState(null, "", location.pathname);
 }
 
+function eveningBanner() {
+  const due = reminderDue(new Date(), state.eveningSettings.time, eveningStats().doneToday);
+  return due ? `<div class="ev-banner" role="status">${icon("moon")}<p>Tonight’s question is ready — no pressure.</p><button data-eva="open">Open</button></div>` : "";
+}
+
+// --------------------------------------------------------------------------- Morning
+function morningLink() { return `${location.origin}${location.pathname}?open=morning#morning`; }
+function saveMorningSettings() { persist(MORNING_KEYS.settings, JSON.stringify(state.morningSettings)); }
+function morningHomeCard() {
+  const today = dayKey(), intention = morningIntentionFor(state.journal);
+  if (state.morningSettings.dismissed === today && !intention) return `<button class="morning-mini" data-mo="show">${icon("sun")} This morning’s line</button>`;
+  return `<article class="morning-card" aria-label="This morning">
+    <div class="mo-top"><small>${icon("sun")} This morning · deciding well</small>${intention ? "" : '<button class="mo-x" data-mo="dismiss" aria-label="Not today">×</button>'}</div>
+    <p class="mo-line">${escapeHTML(lineForDate(new Date()))}</p>
+    ${intention ? `<p class="mo-kept">Today I want to handle well: <strong>${escapeHTML(intention)}</strong></p>` : '<button class="mo-open" data-mo="open">A decision I want to handle well today →</button>'}
+  </article>`;
+}
+function renderMorning() {
+  const m = state.morning || (state.morning = { pick: "" });
+  app.innerHTML = `<section>${header("This morning", "", { back: "home", right: " " })}
+    <div class="card conversation" data-mo-step="intention">
+      <p class="mo-line big">${escapeHTML(lineForDate(new Date()))}</p>
+      <p class="question" id="q">${escapeHTML(INTENTION_PROMPT)}</p>
+      <div class="chip-row">${INTENTION_CHIPS.map(c => `<button class="chip ${m.pick === c ? "on" : ""}" data-mo-chip="${escapeHTML(c)}" aria-pressed="${m.pick === c}">${escapeHTML(c)}</button>`).join("")}</div>
+      <form id="mo-form" class="free-form"><label for="mo-input" class="sr-only">Write your own</label>
+        <input id="mo-input" maxlength="300" autocomplete="off" placeholder="Write your own" value="${escapeHTML(INTENTION_CHIPS.includes(m.pick) ? "" : m.pick)}" />
+        <button class="primary">Save</button></form>
+      <div class="escape-row"><button data-mo="later">Not today</button></div>
+    </div>
+    <p class="step-count">Nothing is saved until you tap Save</p>${helpLink}</section>`;
+}
+function openMorning() { state.morning = { pick: "" }; go("morning"); }
+function saveMorning(value) {
+  if (!state.storageOk) return showToast("This browser is blocking storage, so this can’t be saved.");
+  try {
+    const entry = createMorningEntry({ line: lineForDate(new Date()), intention: value });
+    state.journal.unshift(entry);
+    if (!persistJournal()) { state.journal.shift(); return; }
+    state.morning = null; clearMorningLink(); go("home"); showToast("Kept in your Journal on this device");
+  } catch (error) {
+    if (error.message === "crisis") { state.crisisFrom = "morning"; return go("crisis"); }
+    showToast(error.message);
+  }
+}
+function clearMorningLink() { if (/morning/.test(location.search + location.hash)) history.replaceState(null, "", location.pathname); }
+function downloadMorningICS() {
+  const ics = buildReminderICS({ time: state.morningSettings.time, url: morningLink(), uid: "pops-morning-inspiration@pops", title: "POPS · This morning", lead: "Today’s line about deciding well is ready." });
+  const url = URL.createObjectURL(new Blob([ics], { type: "text/calendar;charset=utf-8" }));
+  const link = Object.assign(document.createElement("a"), { href: url, download: "pops-morning-reminder.ics" });
+  document.body.append(link); link.click(); link.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1500);
+}
+
 function eveningHomeCard() {
   const stats = eveningStats();
   const due = reminderDue(new Date(), state.eveningSettings.time, stats.doneToday);
-  return `${due ? `<div class="ev-banner" role="status">${icon("moon")}<p>It’s past ${escapeHTML(formatTime(state.eveningSettings.time))}. Tonight’s question is here whenever you are — no pressure.</p><button data-eva="open">Open</button></div>` : ""}
-    <button class="evening-card" data-eva="open">
+  return `<button class="evening-card" data-eva="open">
       <span>${icon("moon")}<small>Evening · POPR moment</small></span>
       <strong>${stats.doneToday ? "Tonight’s reflection is kept" : "Tonight’s question"}</strong>
       <em>${escapeHTML(statsLine(stats))}</em>
@@ -545,6 +606,7 @@ function openEvening() {
 function routeFromURL(fromHashChange) {
   const wantsEvening = location.hash === "#evening" || new URLSearchParams(location.search).get("open") === "evening";
   if (wantsEvening) return openEvening();
+  if (location.hash === "#morning" || new URLSearchParams(location.search).get("open") === "morning") return openMorning();
   if (!fromHashChange) render(false);
 }
 
@@ -552,9 +614,15 @@ function evStepChips(step, ev) {
   if (step === "question") return ev.chips;
   if (step === "pause") return MOOD_CHIPS;
   if (step === "observe") return OBSERVE_CHIPS;
-  if (step === "probe") return probeFor({ ...ev.answers, people: ev.people }).chips;
+  if (step === "probe") return evProbe(ev).chips;
   if (step === "reflect") return REFLECT_CHIPS;
   return [];
+}
+
+function evProbe(ev) {
+  const intention = morningIntentionFor(state.journal);
+  if (intention && !/^Nothing big/.test(intention)) return { q: `This morning you wanted to handle “${intention}” well. How did it go?`, chips: ["It went well", "Mixed", "Still open", "It didn’t come up"] };
+  return probeFor({ ...ev.answers, people: ev.people });
 }
 
 function evPrompt(step, ev) {
@@ -563,7 +631,7 @@ function evPrompt(step, ev) {
     pause: ["Take one slow breath. You’ve arrived at the end of the day.", "Optional: how are you arriving right now?"],
     observe: ["What actually happened today?", "Facts first — what you did, saw, or heard."],
     people: ["Who did you spend time with, or what was on your calendar?", ""],
-    probe: [probeFor({ ...ev.answers, people: ev.people }).q, "One deeper look. Skip it if it doesn’t fit tonight."],
+    probe: [evProbe(ev).q, "One deeper look. Skip it if it doesn’t fit tonight."],
     reflect: ["What are you carrying into tomorrow?", "An intention, a question, or nothing at all."]
   }[step];
 }
@@ -624,7 +692,7 @@ function renderEveningReview(head, track) {
   const ev = state.evening;
   const saved = !!ev.savedId;
   const rows = [["Tonight’s question", ev.question], ["Your answer", ev.answers.answer], ["Arriving as", ev.answers.mood], ["What happened", ev.answers.observe],
-    ["People & plans", ev.people.join(", ")], [probeFor({ ...ev.answers, people: ev.people }).q, ev.answers.probe], ["Carrying into tomorrow", ev.answers.reflect]];
+    ["People & plans", ev.people.join(", ")], [evProbe(ev).q, ev.answers.probe], ["Carrying into tomorrow", ev.answers.reflect]];
   app.innerHTML = `<section>${head}${track}
     <div class="card completion" data-ev-step="review">
       <div class="soft-mark">☾</div>
@@ -649,7 +717,7 @@ function evRecord(value) {
   const key = step === "question" ? "answer" : step === "pause" ? "mood" : step;
   if (!text) { delete ev.answers[key]; } else ev.answers[key] = text;
   if (step === "reflect" || step === "question" || step === "observe" || step === "probe") {
-    if (suggestsDecision(text) || text === "Yes — it’s forming") ev.decisionForming = true;
+    if (suggestsDecision(text) || text === "Yes — it’s forming" || text === "Still open") ev.decisionForming = true;
   }
   ev.step = Math.min(ev.step + 1, EV_STEPS.length - 1);
   go("evening");
@@ -690,6 +758,7 @@ function setupStatus() {
   return {
     notify: perm === "unsupported" ? (isInstalled() ? "Unavailable" : "Needs install") : perm === "denied" ? "Blocked" : s.notify && perm === "granted" ? "On" : perm === "default" ? "Needed" : "Off",
     reminder: s.icsAdded ? "On" : "Off",
+    morning: state.morningSettings.icsAdded ? "On" : "Off",
     calendar: s.calendar ? "On" : "Off",
     names: s.names === false ? "Off" : "On"
   };
@@ -697,7 +766,7 @@ function setupStatus() {
 function setupHomeCard() {
   const st = setupStatus();
   const on = Object.values(st).filter(v => v === "On").length;
-  return `<button class="setup-card" data-eva="setup"><span>${icon("settings")}<small>Set up POPS</small></span><strong>${on} of 4 on</strong><em>Notifications · reminder · calendar · names</em></button>`;
+  return `<button class="setup-card" data-eva="setup"><span>${icon("settings")}<small>Set up POPS</small></span><strong>${on} of ${Object.keys(st).length} on</strong><em>Notifications · reminders · calendar · names</em></button>`;
 }
 const badge = v => `<span class="status ${v === "On" ? "on" : v === "Needed" ? "need" : ""}">${v}</span>`;
 function renderSetup() {
@@ -707,6 +776,9 @@ function renderSetup() {
     <div class="card setup-list">
       <div class="setup-item"><div><strong>Notifications</strong>${badge(st.notify)}<p class="field-note">${st.notify === "Needs install" ? "On iPhone: Share → Add to Home Screen, then open POPS from the icon." : st.notify === "Blocked" ? "Blocked in your browser settings." : "A local nudge after your reminder time, best effort."}</p></div>
         ${["Needed", "Off", "On"].includes(st.notify) ? `<button class="secondary" data-eva="notify">${st.notify === "On" ? "Turn off" : "Allow"}</button>` : ""}</div>
+      <div class="setup-item"><div><strong>Morning reminder</strong>${badge(st.morning)}<p class="field-note">A daily calendar event at ${escapeHTML(formatTime(state.morningSettings.time))} that opens this morning’s line.</p>
+        <form id="mo-time-form" class="time-row"><label for="mo-time" class="sr-only">Morning reminder time</label><input id="mo-time" type="time" value="${escapeHTML(state.morningSettings.time)}" required /><button class="plain-link">Set time</button></form></div>
+        <button class="secondary" data-mo="ics">${st.morning === "On" ? "Add again" : "Add to calendar"}</button></div>
       <div class="setup-item"><div><strong>Nightly reminder</strong>${badge(st.reminder)}<p class="field-note">A daily calendar event at ${escapeHTML(formatTime(s.time))} that opens tonight’s question.</p>
         <form id="ev-time-form" class="time-row"><label for="ev-time" class="sr-only">Reminder time</label><input id="ev-time" type="time" value="${escapeHTML(s.time)}" required /><button class="plain-link">Set time</button></form></div>
         <button class="secondary" data-eva="ics">${st.reminder === "On" ? "Add again" : "Add to calendar"}</button></div>
@@ -759,7 +831,7 @@ app.addEventListener("click", async event => {
     case "save": {
       if (!state.storageOk) return showToast("This browser is blocking storage, so this can’t be saved.");
       try {
-        const entry = createReflectionEntry({ question: ev.question, answers: { ...ev.answers, people: ev.people }, probeQuestion: probeFor({ ...ev.answers, people: ev.people }).q, decisionForming: ev.decisionForming });
+        const entry = createReflectionEntry({ question: ev.question, answers: { ...ev.answers, people: ev.people }, probeQuestion: evProbe(ev).q, decisionForming: ev.decisionForming });
         state.journal.unshift(entry);
         if (persistJournal()) { ev.savedId = entry.id; render(false); showToast("Kept in your Journal on this device"); } else state.journal.shift();
       } catch (error) {
@@ -787,8 +859,30 @@ app.addEventListener("click", async event => {
   }
 });
 
+app.addEventListener("click", event => {
+  const t = event.target.closest("[data-mo], [data-mo-chip]");
+  if (!t) return;
+  if (t.dataset.moChip) { const m = state.morning || (state.morning = { pick: "" }); m.pick = m.pick === t.dataset.moChip ? "" : t.dataset.moChip; return render(false); }
+  switch (t.dataset.mo) {
+    case "open": return openMorning();
+    case "open-keep": return go("morning");
+    case "show": delete state.morningSettings.dismissed; saveMorningSettings(); return render(false);
+    case "dismiss": state.morningSettings.dismissed = dayKey(); saveMorningSettings(); return render(false);
+    case "later": state.morning = null; clearMorningLink(); return go("home");
+    case "ics": state.morningSettings.icsAdded = true; saveMorningSettings(); downloadMorningICS(); return render(false);
+  }
+});
+
 app.addEventListener("submit", event => {
   const id = event.target.id;
+  if (id === "mo-form") { event.preventDefault(); return saveMorning(document.querySelector("#mo-input").value.trim() || state.morning?.pick || ""); }
+  if (id === "mo-time-form") {
+    event.preventDefault();
+    const value = document.querySelector("#mo-time").value;
+    if (!/^\d{2}:\d{2}$/.test(value)) return showToast("Pick a time first.");
+    state.morningSettings.time = value; saveMorningSettings(); render(false);
+    return showToast(`Morning reminder set to ${formatTime(value)} — re-add it to your calendar to update`);
+  }
   if (id === "ev-form") { event.preventDefault(); return evRecord(document.querySelector("#ev-input").value); }
   if (id === "ev-person-form") {
     event.preventDefault();

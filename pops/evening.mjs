@@ -177,14 +177,14 @@ function fold(line) {
 const stampUTC = d => d.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "");
 
 /** A daily recurring calendar event (floating local time) with an alarm that links to the deep link. */
-export function buildReminderICS({ time = DEFAULT_REMINDER, url, now = new Date(), uid = "pops-evening-reflection@pops" } = {}) {
+export function buildReminderICS({ time = DEFAULT_REMINDER, url, now = new Date(), uid = "pops-evening-reflection@pops", title = "POPS · Evening reflection", lead = "Tonight’s question is waiting." } = {}) {
   const t = parseTime(time) || parseTime(DEFAULT_REMINDER);
   const start = `${dayKey(now).replace(/-/g, "")}T${String(t.h).padStart(2, "0")}${String(t.m).padStart(2, "0")}00`;
-  const desc = `Tonight’s question is waiting. Open POPS: ${url}`;
+  const desc = `${lead} Open POPS: ${url}`;
   return [
     "BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//POPS//Evening reflection//EN", "CALSCALE:GREGORIAN", "METHOD:PUBLISH",
     "BEGIN:VEVENT", `UID:${uid}`, `DTSTAMP:${stampUTC(now)}`, `DTSTART:${start}`, "DURATION:PT5M", "RRULE:FREQ=DAILY",
-    `SUMMARY:${icsEscape("POPS · Evening reflection")}`, `DESCRIPTION:${icsEscape(desc)}`, `URL:${url}`, "TRANSP:TRANSPARENT",
+    `SUMMARY:${icsEscape(title)}`, `DESCRIPTION:${icsEscape(desc)}`, `URL:${url}`, "TRANSP:TRANSPARENT",
     "BEGIN:VALARM", "ACTION:DISPLAY", "TRIGGER:PT0M", `DESCRIPTION:${icsEscape(desc)}`, "END:VALARM",
     "END:VEVENT", "END:VCALENDAR"
   ].map(fold).join("\r\n") + "\r\n";

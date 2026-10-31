@@ -2,10 +2,10 @@
 // It never caches or sees Journal data (that lives in localStorage), and it
 // ignores every cross-origin request. Bump VERSION on each release
 // (scripts/build.mjs stamps it automatically in dist/).
-const VERSION = "0.2.1-beta-85c6d96e";
+const VERSION = "0.3.0-beta-3008f414";
 const CACHE = `pops-shell-${VERSION}`;
 const ASSETS = [
-  "./", "./index.html", "./styles.css", "./app.mjs", "./logic.mjs", "./evening.mjs", "./manifest.webmanifest",
+  "./", "./index.html", "./styles.css", "./app.mjs", "./logic.mjs", "./evening.mjs", "./morning.mjs", "./manifest.webmanifest",
   "./icons/pops-icon.svg", "./icons/pops-192.png", "./icons/pops-512.png", "./icons/pops-maskable-512.png", "./icons/apple-touch-icon.png"
 ];
 

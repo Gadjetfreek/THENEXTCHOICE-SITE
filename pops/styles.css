@@ -199,3 +199,20 @@ code { font-size: .72rem; word-break: break-all; }
   .status { background: #2c3832; color: #b8c5be; } .status.on { background: #1f4030; color: #a8e0bf; } .status.need { background: #4a3a17; color: #f3cf86; }
   .perm-link { color: #9fd6b8; } .file-button { border-color: #3a4a41; }
 }
+.morning-card { margin: 4px 0 14px; padding: 18px 20px; border-radius: 24px; background: linear-gradient(135deg, #fbf1dc, #f6e6cf); border: 1px solid rgba(188, 108, 63, .18); color: #3d3226; }
+.mo-top { display: flex; align-items: center; justify-content: space-between; }
+.mo-top small { display: flex; align-items: center; gap: 7px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; font-size: .7rem; color: #9a5a2e; }
+.mo-top .icon { width: 18px; height: 18px; }
+.mo-x { width: 32px; height: 32px; border: 0; border-radius: 50%; background: transparent; color: #9a7a5e; font-size: 1.3rem; line-height: 1; cursor: pointer; }
+.mo-line { margin: 8px 0 10px; font-size: 1.12rem; line-height: 1.45; font-weight: 600; }
+.mo-line.big { font-size: 1.05rem; color: #7a4a26; font-weight: 600; margin-top: 0; }
+.mo-open { width: auto; border: 0; background: none; padding: 4px 0; color: #9a5a2e; font: inherit; font-weight: 700; font-size: .9rem; cursor: pointer; }
+.mo-kept { margin: 0; font-size: .88rem; }
+.morning-mini { display: inline-flex; align-items: center; gap: 6px; width: auto; margin: 0 0 12px; padding: 6px 12px; border-radius: 999px; border: 1px solid rgba(188, 108, 63, .3); background: transparent; color: #9a5a2e; font: inherit; font-size: .8rem; font-weight: 700; }
+.morning-mini .icon { width: 16px; height: 16px; }
+.kind.morning { background: #f6e6cf; color: #8a4f22; }
+@media (prefers-color-scheme: dark) {
+  .morning-card { background: linear-gradient(135deg, #3a3023, #2f281f); border-color: #4a3c2c; color: #f0e4d2; }
+  .mo-top small, .mo-open, .morning-mini { color: #f0c38f; } .mo-line.big { color: #f0c38f; }
+  .kind.morning { background: #3a3023; color: #f0c38f; }
+}
