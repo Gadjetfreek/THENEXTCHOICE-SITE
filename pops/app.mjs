@@ -94,13 +94,7 @@ const helpLink = `<button class="help-link" data-action="crisis-direct">${icon("
 // --------------------------------------------------------------------------- Home
 function renderHome() {
   app.innerHTML = `<section class="home-screen">
-    <div class="brand-row"><div><p class="eyebrow">Pause · Observe · Probe · Select</p><h1>POPS</h1></div>
-      <div class="brand-actions">
-        <button class="journal-shortcut" data-eva="setup" aria-label="Set up POPS">${icon("settings")}<span>Setup</span></button>
-        <button class="journal-shortcut" data-action="about" aria-label="About POPS">${icon("info")}<span>About</span></button>
-        <button class="journal-shortcut" data-action="journal" aria-label="Open Journal">${icon("journal")}<span>Journal${state.journal.length ? ` · ${state.journal.length}` : ""}</span></button>
-      </div>
-    </div>
+    <header class="brand-center"><p class="eyebrow">Pause · Observe · Probe · Select</p><h1>POPS</h1></header>
     ${eveningBanner()}
     ${focusCard()}
     <div class="action-grid" aria-label="POPS sections">
@@ -775,7 +769,12 @@ function setupStatus() {
 function setupHomeCard() {
   const st = setupStatus();
   const on = Object.values(st).filter(v => v === "On").length;
-  return `<button class="setup-card" data-eva="setup"><span>${icon("settings")}<small>Set up POPS</small></span><strong>${on} of ${Object.keys(st).length} on</strong><em>Notifications · reminders · calendar · names</em></button>`;
+  const n = state.journal.length;
+  return `<nav class="home-bar" aria-label="POPS menu">
+    <button class="bar-setup" data-eva="setup" aria-label="Set up POPS, ${on} of ${Object.keys(st).length} on">${icon("settings")}<span>Setup</span><small class="bar-badge">${on} of ${Object.keys(st).length} on</small></button>
+    <button data-action="journal" aria-label="Open Journal${n ? `, ${n} entries` : ""}">${icon("journal")}<span>Journal</span><small class="bar-badge">${n ? `${n} saved` : "Empty"}</small></button>
+    <button data-action="about" aria-label="About POPS">${icon("info")}<span>About</span><small class="bar-badge">How it works</small></button>
+  </nav>`;
 }
 const badge = v => `<span class="status ${v === "On" ? "on" : v === "Needed" ? "need" : ""}">${v}</span>`;
 function renderSetup() {

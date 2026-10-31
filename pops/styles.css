@@ -231,3 +231,11 @@ code { font-size: .72rem; word-break: break-all; }
 }
 .question.small-q { font-size: 1.05rem; margin: 14px 0 4px; }
 .mantra-why { display: block; margin-top: 3px; font-size: .7rem; font-style: normal; letter-spacing: .03em; opacity: .7; }
+.brand-center { text-align: center; margin: 4px 0 22px; }
+.brand-center h1 { margin: 2px 0 0; }
+.home-bar { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin: 4px 0 14px; padding: 8px 6px calc(8px + env(safe-area-inset-bottom, 0px)); border-radius: 20px; border: 1px solid #d8e2dc; background: #fff; }
+.home-bar button { display: flex; flex-direction: column; align-items: center; gap: 2px; border: 0; background: transparent; font: inherit; color: inherit; padding: 8px 4px; border-radius: 14px; min-height: 64px; }
+.home-bar button:active { background: #eef3f0; }
+.home-bar span { font-weight: 700; font-size: .88rem; }
+.bar-badge { font-size: .7rem; color: #4d6b5c; letter-spacing: .02em; }
+@media (prefers-color-scheme: dark) { .home-bar { background: #1d2622; border-color: #33423a; } .home-bar button:active { background: #26322c; } .bar-badge { color: #9fb8aa; } }
