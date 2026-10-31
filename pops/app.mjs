@@ -97,6 +97,7 @@ function renderHome() {
     <header class="brand-center"><p class="eyebrow">Pause · Observe · Probe · Select</p><h1>POPS</h1></header>
     ${eveningBanner()}
     ${focusCard()}
+    ${state.mantraSheet ? mantraSheet(mantraPick()) : ""}${state.focusSheet ? focusSheet() : ""}
     <div class="action-grid" aria-label="POPS sections">
       ${tile("attend", "Attend", true)}${tile("relate", "Relate", true)}
       ${tile("pause", "Pause", false, state.session && !isComplete(state.session) ? "Resume reflection" : "Bring a real choice")}${tile("reflect", "Reflect", true)}
@@ -353,7 +354,7 @@ function render(focus = true) {
 }
 
 // --------------------------------------------------------------------------- Actions
-function go(view) { state.view = view; state.customAnswer = false; render(); }
+function go(view) { state.view = view; state.focusSheet = false; state.mantraSheet = null; state.customAnswer = false; render(); }
 
 function startFlow(depth) {
   state.session = createSession(depth);
@@ -534,7 +535,8 @@ function mantra() { return mantraPick().text; }
 function hiddenMantras() { try { return JSON.parse(localStorage.getItem(MANTRA_HIDDEN_KEY) || "[]"); } catch { return []; } }
 function mantraSheet(m) {
   const s = state.mantraSheet;
-  return `<div class="mantra-sheet" role="dialog" aria-label="Today’s mantra">
+  return `<div class="sheet-backdrop" data-ms="close"></div><div class="mantra-sheet bottom-sheet" role="dialog" aria-modal="true" aria-label="Today’s mantra">
+    <div class="sheet-grip"></div><p class="ms-quote">${escapeHTML(m.text)}</p>
     <div class="ms-actions">
       <button class="secondary" data-ms="log">Log it</button>
       <button class="secondary" data-ms="comment" aria-expanded="${s.commenting}">Comment</button>
@@ -563,14 +565,25 @@ function saveMantra(comment) {
 // One top card: a quiet daily mantra (tap for another), the current focus, then today's intention.
 function focusCard() {
   const intention = morningIntentionFor(state.journal), mood = morningMoodFor(state.journal);
-  return `<article class="focus-card" aria-label="This morning and your current focus">
-    ${(() => { const m = mantraPick(); return `<button class="mantra" data-mo="sheet" aria-expanded="${!!state.mantraSheet}" aria-label="Today’s mantra — log it, comment, or see another">${icon("sun")}<span>${escapeHTML(m.text)}${m.reason ? `<em class="mantra-why">${escapeHTML(m.reason)}</em>` : ""}</span></button>${state.mantraSheet ? mantraSheet(m) : ""}`; })()}
-    <div class="now-next" role="group" aria-label="Now and next">
-      <button class="focus" data-action="current"><small>Now</small><strong>${escapeHTML(state.current)}</strong></button>
-      <button class="next-line" data-action="next"><small>Next</small><span>Likely interruption or obligation</span><em>${escapeHTML(nudgeSummary(state.nudges))}</em></button>
-    </div>
+  const m = mantraPick();
+  const focus = state.current === "Choose your focus" ? "Not set" : state.current;
+  return `<article class="focus-card" aria-label="Today’s mantra and your focus">
+    <button class="mantra" data-mo="sheet" aria-haspopup="dialog" aria-label="Today’s mantra — log it, comment, or see another"><span class="mantra-text">${escapeHTML(m.text)}</span>${m.reason ? `<em class="mantra-why">${escapeHTML(m.reason)}</em>` : ""}</button>
     ${intention || mood ? `<p class="mo-kept">${mood ? `Arriving ${escapeHTML(mood.toLowerCase())}` : ""}${mood && intention ? " · " : ""}${intention ? `Today I want to handle well: <strong>${escapeHTML(intention)}</strong>` : ""}</p>` : '<button class="mo-open" data-mo="open">+ Morning check-in: mood & a decision to handle well</button>'}
+    <button class="fn-button" data-fs="open" aria-haspopup="dialog">${icon("next")}<span><strong>Focus / Nudge</strong><small>Focus · ${escapeHTML(focus)} · ${escapeHTML(nudgeSummary(state.nudges))}</small></span></button>
   </article>`;
+}
+function focusSheet() {
+  const custom = !["Personal time", "Work", "With people", "Choose your focus"].includes(state.current);
+  return `<div class="sheet-backdrop" data-fs="close"></div><div class="bottom-sheet focus-sheet" role="dialog" aria-modal="true" aria-label="Focus and nudge">
+    <div class="sheet-grip"></div>
+    <p class="sheet-title">Focus</p>
+    <div class="choice-list">${["Personal time", "Work", "With people", "Make your own"].map(v => `<button data-current="${v}" aria-pressed="${state.current === v || (v === "Make your own" && custom)}" class="${state.current === v || (v === "Make your own" && custom) ? "on" : ""}">${v === "Make your own" && custom ? `Make your own · ${escapeHTML(state.current)}` : v}</button>`).join("")}</div>
+    <form id="current-form" class="free-form hidden"><label for="current-input">Make your own</label><input id="current-input" maxlength="60" autocomplete="off" /><button class="primary">Save focus</button></form>
+    <p class="sheet-title">Next up · nudges</p>
+    <button class="fn-row" data-action="next"><span><strong>Likely interruption or obligation</strong><small>${escapeHTML(nudgeSummary(state.nudges))} · tap to change</small></span>${icon("next")}</button>
+    <button class="plain-link sheet-close" data-fs="close">Close</button>
+  </div>`;
 }
 function renderMorning() {
   const m = state.morning || (state.morning = { pick: "", mood: "" });
@@ -810,6 +823,7 @@ function renderSetup() {
   const back = state.setupFrom === "evening" && state.evening ? "Back to tonight’s reflection" : "Done";
   app.innerHTML = `<section>${header("Set up POPS", "Everything stays on this device. Turn on only what helps.", { back: "setup-back", right: " " })}
     <div class="card setup-list">
+      ${hiddenMantras().length ? `<div class="setup-item"><div><strong>Hidden mantras</strong><p class="field-note">${hiddenMantras().length} hidden with “Not for me”.</p></div><button class="secondary" data-ms="restore">Restore hidden mantras</button></div>` : ""}
       <div class="setup-item"><div><strong>Notifications</strong>${badge(st.notify)}<p class="field-note">${st.notify === "Needs install" ? "On iPhone: Share → Add to Home Screen, then open POPS from the icon." : st.notify === "Blocked" ? "Blocked in your browser settings." : "A local nudge after your reminder time, best effort."}</p></div>
         ${["Needed", "Off", "On"].includes(st.notify) ? `<button class="secondary" data-eva="notify">${st.notify === "On" ? "Turn off" : "Allow"}</button>` : ""}</div>
       <div class="setup-item"><div><strong>Morning reminder</strong>${badge(st.morning)}<p class="field-note">A daily calendar event at ${escapeHTML(formatTime(state.morningSettings.time))} that opens this morning’s line.</p>
@@ -896,6 +910,8 @@ app.addEventListener("click", async event => {
 });
 
 app.addEventListener("click", event => {
+  const fs = event.target.closest("[data-fs]");
+  if (fs) { state.focusSheet = fs.dataset.fs === "open"; state.mantraSheet = null; return render(false); }
   const ms = event.target.closest("[data-ms], [data-ms-chip]");
   if (ms) {
     const s = state.mantraSheet || (state.mantraSheet = { commenting: false, chip: "", draft: "" });
@@ -905,8 +921,9 @@ app.addEventListener("click", event => {
       case "log": return saveMantra("");
       case "comment": s.commenting = !s.commenting; render(false); return document.querySelector("#ms-input")?.focus();
       case "new": state.mantraOffset = (state.mantraOffset || 0) + 1; s.commenting = false; s.chip = ""; s.draft = ""; return render(false);
-      case "hide": { const h = hiddenMantras(); h.push(mantra()); persist(MANTRA_HIDDEN_KEY, JSON.stringify(h)); state.mantraSheet = null; render(false); return showToast("Won’t show that one again on this device"); }
+      case "hide": { const h = hiddenMantras(); h.push(mantra()); persist(MANTRA_HIDDEN_KEY, JSON.stringify(h)); state.mantraSheet = null; render(false); return showToast("Hidden on this device · restore it in Setup"); }
       case "close": state.mantraSheet = null; return render(false);
+      case "restore": state.mantraSheet = null; localStorage.removeItem(MANTRA_HIDDEN_KEY); render(false); return showToast("Hidden mantras restored");
     }
     return;
   }
