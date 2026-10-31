@@ -9,7 +9,7 @@ import {
   statsLine, suggestsDecision
 } from "./evening.mjs";
 import {
-  DEFAULT_MORNING_REMINDER, INTENTION_CHIPS, INTENTION_PROMPT, MORNING_KEYS, createMorningEntry, lineForDate, morningIntentionFor
+  DEFAULT_MORNING_REMINDER, INTENTION_CHIPS, INTENTION_PROMPT, MORNING_KEYS, LINES, MOOD_PROMPT, MORNING_MOODS, createMorningEntry, morningIntentionFor, morningMoodFor, selectMantra
 } from "./morning.mjs";
 
 const app = document.querySelector("#app");
@@ -102,12 +102,7 @@ function renderHome() {
       </div>
     </div>
     ${eveningBanner()}
-    ${morningHomeCard()}
-    <button class="current-card" data-action="current">
-      <span>${icon("current")}<small>Current</small></span>
-      <strong>${escapeHTML(state.current)}</strong>
-    </button>
-    ${setupHomeCard()}
+    ${focusCard()}
     <div class="action-grid" aria-label="POPS sections">
       ${tile("attend", "Attend", true)}${tile("relate", "Relate", true)}
       ${tile("pause", "Pause", false, state.session && !isComplete(state.session) ? "Resume reflection" : "Bring a real choice")}${tile("reflect", "Reflect", true)}
@@ -118,6 +113,7 @@ function renderHome() {
       <em>${escapeHTML(nudgeSummary(state.nudges))}</em>
     </button>
     ${eveningHomeCard()}
+    ${setupHomeCard()}
     <p class="privacy-line">${icon("lock")} Nothing leaves this device. No account, no AI model, no server. Only what you choose to Save is kept, in this browser.</p>
     ${state.storageOk ? "" : '<p class="warning">This browser is blocking local storage (private mode?). Reflections work, but Journal saves won’t stick.</p>'}
     ${helpLink}
@@ -314,8 +310,8 @@ function journalAdd() {
 function journalRead() {
   if (!state.journal.length) return `<div class="card empty"><p>No Journal entries yet.</p><p class="field-note">Finish a Pause and tap Save, or add a note in your own words.</p><button class="primary" data-journal-mode="add">Add your first entry</button></div>`;
   return `<div class="entry-list">${state.journal.map(e => `<article class="card entry">
-      <div class="entry-meta"><span class="kind ${e.kind}">${e.kind === "decision" ? "Decision card" : e.kind === "reflection" ? "Evening reflection" : e.kind === "morning" ? "Morning intention" : "Note"}</span><time>${formatDate(e.createdAt)}</time></div>
-      ${e.kind === "morning" ? `<h3>${escapeHTML(e.intention)}</h3><p>${escapeHTML(e.line)}</p>` : e.kind === "reflection" ? `<h3>${escapeHTML(e.question)}</h3><p>${escapeHTML(e.answers.reflect || e.answers.answer || e.answers.observe || e.answers.probe || "Kept")}</p>` : e.kind === "decision" ? `<h3>${escapeHTML(e.title)}</h3><p>${e.card.selection ? `<strong>Your choice:</strong> ${escapeHTML(e.card.selection)}` : "No path named"}</p>` : `<p>${escapeHTML(e.originalText)}</p>`}
+      <div class="entry-meta"><span class="kind ${e.kind}">${e.kind === "decision" ? "Decision card" : e.kind === "reflection" ? "Evening reflection" : e.kind === "morning" ? "Morning check-in" : "Note"}</span><time>${formatDate(e.createdAt)}</time></div>
+      ${e.kind === "morning" ? `<h3>${escapeHTML(e.intention || `Arriving: ${e.mood}`)}</h3>${e.mood && e.intention ? `<p class="field-note">Arriving: ${escapeHTML(e.mood)}</p>` : ""}<p>${escapeHTML(e.line)}</p>` : e.kind === "reflection" ? `<h3>${escapeHTML(e.question)}</h3><p>${escapeHTML(e.answers.reflect || e.answers.answer || e.answers.observe || e.answers.probe || "Kept")}</p>` : e.kind === "decision" ? `<h3>${escapeHTML(e.title)}</h3><p>${e.card.selection ? `<strong>Your choice:</strong> ${escapeHTML(e.card.selection)}` : "No path named"}</p>` : `<p>${escapeHTML(e.originalText)}</p>`}
       <div><button data-open="${e.id}">${e.kind === "decision" ? "Open card" : e.kind === "reflection" ? "Open reflection" : "View source"}</button><button class="danger" data-delete="${e.id}">${icon("trash")} Delete</button></div>
     </article>`).join("")}</div>
     <div class="journal-footer"><button data-action="export">Download a copy (JSON)</button><button class="danger-text" data-action="delete-all">Delete everything</button></div>`;
@@ -323,7 +319,7 @@ function journalRead() {
 
 function entryPanel(entry) {
   return `<div class="modal-backdrop" data-action="close-entry"><article class="source-panel" role="dialog" aria-modal="true" aria-labelledby="entry-title" data-panel>
-    <p class="eyebrow">${entry.kind === "decision" ? "Saved decision card" : entry.kind === "reflection" ? `Evening reflection · ${escapeHTML(entry.day || "")}` : entry.kind === "morning" ? `Morning intention · ${escapeHTML(entry.day || "")}` : "Narrative → source"}</p>
+    <p class="eyebrow">${entry.kind === "decision" ? "Saved decision card" : entry.kind === "reflection" ? `Evening reflection · ${escapeHTML(entry.day || "")}` : entry.kind === "morning" ? `Morning check-in · ${escapeHTML(entry.day || "")}` : "Narrative → source"}</p>
     <h2 id="entry-title">${escapeHTML(entry.kind === "decision" ? entry.title : entry.kind === "reflection" ? "Your evening, in your words" : entry.kind === "morning" ? "A decision to handle well" : "Original entry")}</h2>
     ${entry.kind === "decision" ? `<p class="handback">${escapeHTML(entry.card.handback)}</p>${cardFields(entry.card, false)}` : `<blockquote>${escapeHTML(entry.originalText)}</blockquote>`}
     <dl class="meta"><div><dt>Source</dt><dd>${escapeHTML(entry.source)}</dd></div><div><dt>Saved</dt><dd>${escapeHTML(formatDate(entry.createdAt, true))}</dd></div></dl>
@@ -540,34 +536,47 @@ function eveningBanner() {
 // --------------------------------------------------------------------------- Morning
 function morningLink() { return `${location.origin}${location.pathname}?open=morning#morning`; }
 function saveMorningSettings() { persist(MORNING_KEYS.settings, JSON.stringify(state.morningSettings)); }
-function morningHomeCard() {
-  const today = dayKey(), intention = morningIntentionFor(state.journal);
-  if (state.morningSettings.dismissed === today && !intention) return `<button class="morning-mini" data-mo="show">${icon("sun")} This morning’s line</button>`;
-  return `<article class="morning-card" aria-label="This morning">
-    <div class="mo-top"><small>${icon("sun")} This morning · deciding well</small>${intention ? "" : '<button class="mo-x" data-mo="dismiss" aria-label="Not today">×</button>'}</div>
-    <p class="mo-line">${escapeHTML(lineForDate(new Date()))}</p>
-    ${intention ? `<p class="mo-kept">Today I want to handle well: <strong>${escapeHTML(intention)}</strong></p>` : '<button class="mo-open" data-mo="open">A decision I want to handle well today →</button>'}
+function mantraPick() {
+  const focus = state.current === "Choose your focus" ? "" : state.current;
+  return selectMantra({ mood: morningMoodFor(state.journal), intention: morningIntentionFor(state.journal), events: state.calendarChips, focus }, state.mantraOffset || 0);
+}
+function mantra() { return mantraPick().text; }
+// One top card: a quiet daily mantra (tap for another), the current focus, then today's intention.
+function focusCard() {
+  const intention = morningIntentionFor(state.journal), mood = morningMoodFor(state.journal);
+  return `<article class="focus-card" aria-label="This morning and your current focus">
+    ${(() => { const m = mantraPick(); return `<button class="mantra" data-mo="next" aria-label="Today’s mantra — tap for another">${icon("sun")}<span>${escapeHTML(m.text)}${m.reason ? `<em class="mantra-why">${escapeHTML(m.reason)}</em>` : ""}</span></button>`; })()}
+    <button class="focus" data-action="current"><small>Current focus</small><strong>${escapeHTML(state.current)}</strong></button>
+    ${intention || mood ? `<p class="mo-kept">${mood ? `Arriving ${escapeHTML(mood.toLowerCase())}` : ""}${mood && intention ? " · " : ""}${intention ? `Today I want to handle well: <strong>${escapeHTML(intention)}</strong>` : ""}</p>` : '<button class="mo-open" data-mo="open">+ Morning check-in: mood & a decision to handle well</button>'}
   </article>`;
 }
 function renderMorning() {
-  const m = state.morning || (state.morning = { pick: "" });
+  const m = state.morning || (state.morning = { pick: "", mood: "" });
   app.innerHTML = `<section>${header("This morning", "", { back: "home", right: " " })}
     <div class="card conversation" data-mo-step="intention">
-      <p class="mo-line big">${escapeHTML(lineForDate(new Date()))}</p>
-      <p class="question" id="q">${escapeHTML(INTENTION_PROMPT)}</p>
+      <p class="mo-line big">${escapeHTML(mantra())}</p>
+      <p class="question small-q">${escapeHTML(MOOD_PROMPT)}</p>
+      <div class="chip-row">${MORNING_MOODS.map(c => `<button class="chip ${m.mood === c ? "on" : ""}" data-mo-mood="${escapeHTML(c)}" aria-pressed="${m.mood === c}">${escapeHTML(c)}</button>`).join("")}</div>
+      <p class="question small-q" id="q">${escapeHTML(INTENTION_PROMPT)}</p>
       <div class="chip-row">${INTENTION_CHIPS.map(c => `<button class="chip ${m.pick === c ? "on" : ""}" data-mo-chip="${escapeHTML(c)}" aria-pressed="${m.pick === c}">${escapeHTML(c)}</button>`).join("")}</div>
       <form id="mo-form" class="free-form"><label for="mo-input" class="sr-only">Write your own</label>
-        <input id="mo-input" maxlength="300" autocomplete="off" placeholder="Write your own" value="${escapeHTML(INTENTION_CHIPS.includes(m.pick) ? "" : m.pick)}" />
+        <input id="mo-input" maxlength="300" autocomplete="off" placeholder="Write your own (mood or decision)" value="${escapeHTML(INTENTION_CHIPS.includes(m.pick) ? "" : m.pick)}" />
         <button class="primary">Save</button></form>
       <div class="escape-row"><button data-mo="later">Not today</button></div>
     </div>
     <p class="step-count">Nothing is saved until you tap Save</p>${helpLink}</section>`;
 }
-function openMorning() { state.morning = { pick: "" }; go("morning"); }
+function openMorning() { state.morning = { pick: "", mood: "" }; go("morning"); }
 function saveMorning(value) {
+  const m = state.morning || { pick: "", mood: "" };
+  const typed = value && value !== m.pick ? value : "";
+  // Typed text that reads like a mood with no mood chip chosen counts as the mood; otherwise it's the decision.
+  const mood = m.mood || (typed && !m.pick && /^(feeling |i feel |i'?m )?\w+( \w+)?$/i.test(typed) && /rush|anx|tired|low|calm|stress|hope|heavy|nerv|worr|good|ok/i.test(typed) ? typed : "");
+  const intention = typed && typed !== mood ? typed : m.pick;
   if (!state.storageOk) return showToast("This browser is blocking storage, so this can’t be saved.");
   try {
-    const entry = createMorningEntry({ line: lineForDate(new Date()), intention: value });
+    state.mantraOffset = 0;
+    const entry = createMorningEntry({ line: mantra(), intention, mood });
     state.journal.unshift(entry);
     if (!persistJournal()) { state.journal.shift(); return; }
     state.morning = null; clearMorningLink(); go("home"); showToast("Kept in your Journal on this device");
@@ -860,14 +869,14 @@ app.addEventListener("click", async event => {
 });
 
 app.addEventListener("click", event => {
-  const t = event.target.closest("[data-mo], [data-mo-chip]");
+  const t = event.target.closest("[data-mo], [data-mo-chip], [data-mo-mood]");
   if (!t) return;
+  if (t.dataset.moMood) { const m = state.morning || (state.morning = { pick: "", mood: "" }); m.mood = m.mood === t.dataset.moMood ? "" : t.dataset.moMood; return render(false); }
   if (t.dataset.moChip) { const m = state.morning || (state.morning = { pick: "" }); m.pick = m.pick === t.dataset.moChip ? "" : t.dataset.moChip; return render(false); }
   switch (t.dataset.mo) {
     case "open": return openMorning();
     case "open-keep": return go("morning");
-    case "show": delete state.morningSettings.dismissed; saveMorningSettings(); return render(false);
-    case "dismiss": state.morningSettings.dismissed = dayKey(); saveMorningSettings(); return render(false);
+    case "next": state.mantraOffset = ((state.mantraOffset || 0) + 1) % LINES.length; return render(false);
     case "later": state.morning = null; clearMorningLink(); return go("home");
     case "ics": state.morningSettings.icsAdded = true; saveMorningSettings(); downloadMorningICS(); return render(false);
   }
@@ -875,7 +884,7 @@ app.addEventListener("click", event => {
 
 app.addEventListener("submit", event => {
   const id = event.target.id;
-  if (id === "mo-form") { event.preventDefault(); return saveMorning(document.querySelector("#mo-input").value.trim() || state.morning?.pick || ""); }
+  if (id === "mo-form") { event.preventDefault(); return saveMorning(document.querySelector("#mo-input").value.trim()); }
   if (id === "mo-time-form") {
     event.preventDefault();
     const value = document.querySelector("#mo-time").value;

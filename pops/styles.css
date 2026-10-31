@@ -216,3 +216,18 @@ code { font-size: .72rem; word-break: break-all; }
   .mo-top small, .mo-open, .morning-mini { color: #f0c38f; } .mo-line.big { color: #f0c38f; }
   .kind.morning { background: #3a3023; color: #f0c38f; }
 }
+.focus-card { margin: 4px 0 14px; padding: 16px 22px 18px; border-radius: 30px; border: 1px solid rgba(43, 70, 59, .11); background: rgba(255, 255, 255, .82); box-shadow: 0 12px 34px rgba(36, 51, 46, .08); display: grid; gap: 10px; }
+.mantra { display: flex; align-items: flex-start; gap: 8px; width: 100%; padding: 0 0 10px; border: 0; border-bottom: 1px solid rgba(188, 108, 63, .18); background: none; text-align: left; font: inherit; font-size: .84rem; font-style: italic; line-height: 1.4; color: #8a5a36; cursor: pointer; }
+.mantra .icon { width: 15px; height: 15px; min-width: 15px; margin-top: 2px; opacity: .8; }
+.focus { display: grid; gap: 4px; width: 100%; padding: 2px 0; border: 0; background: none; text-align: left; font: inherit; color: inherit; cursor: pointer; }
+.focus small { font-weight: 800; letter-spacing: .06em; text-transform: uppercase; font-size: .7rem; color: #63736b; }
+.focus strong { font-size: 1.55rem; }
+.focus-card .mo-kept { font-size: .82rem; color: #63736b; }
+.focus-card .mo-open { font-size: .84rem; text-align: left; }
+.setup-card { margin-top: 13px; }
+@media (prefers-color-scheme: dark) {
+  .focus-card { background: rgba(32, 41, 37, .92); border-color: rgba(255,255,255,.08); color: #e7ece8; box-shadow: none; }
+  .mantra { color: #f0c38f; border-color: #4a3c2c; } .focus small, .focus-card .mo-kept { color: #9fb0a7; }
+}
+.question.small-q { font-size: 1.05rem; margin: 14px 0 4px; }
+.mantra-why { display: block; margin-top: 3px; font-size: .7rem; font-style: normal; letter-spacing: .03em; opacity: .7; }

@@ -2,7 +2,7 @@
 // No network, no AI model, no hidden answer. Everything here is deterministic
 // so it can be unit-tested and reasoned about.
 
-export const APP_VERSION = "0.3.0-beta";
+export const APP_VERSION = "0.3.1-beta";
 
 export const STORAGE_KEYS = Object.freeze({
   journal: "pops.journal.v1", // same key as PR #17 so earlier notes survive the upgrade
