@@ -9,7 +9,7 @@ import {
   statsLine, suggestsDecision
 } from "./evening.mjs";
 import {
-  DEFAULT_MORNING_REMINDER, INTENTION_CHIPS, INTENTION_PROMPT, MORNING_KEYS, LINES, MOOD_PROMPT, MORNING_MOODS, createMorningEntry, morningIntentionFor, morningMoodFor, selectMantra
+  DEFAULT_MORNING_REMINDER, INTENTION_CHIPS, INTENTION_PROMPT, MORNING_KEYS, LINES, MANTRA_COMMENT_CHIPS, MANTRA_HIDDEN_KEY, createMantraEntry, MOOD_PROMPT, MORNING_MOODS, createMorningEntry, morningIntentionFor, morningMoodFor, selectMantra
 } from "./morning.mjs";
 
 const app = document.querySelector("#app");
@@ -300,8 +300,8 @@ function journalAdd() {
 function journalRead() {
   if (!state.journal.length) return `<div class="card empty"><p>No Journal entries yet.</p><p class="field-note">Finish a Pause and tap Save, or add a note in your own words.</p><button class="primary" data-journal-mode="add">Add your first entry</button></div>`;
   return `<div class="entry-list">${state.journal.map(e => `<article class="card entry">
-      <div class="entry-meta"><span class="kind ${e.kind}">${e.kind === "decision" ? "Decision card" : e.kind === "reflection" ? "Evening reflection" : e.kind === "morning" ? "Morning check-in" : "Note"}</span><time>${formatDate(e.createdAt)}</time></div>
-      ${e.kind === "morning" ? `<h3>${escapeHTML(e.intention || `Arriving: ${e.mood}`)}</h3>${e.mood && e.intention ? `<p class="field-note">Arriving: ${escapeHTML(e.mood)}</p>` : ""}<p>${escapeHTML(e.line)}</p>` : e.kind === "reflection" ? `<h3>${escapeHTML(e.question)}</h3><p>${escapeHTML(e.answers.reflect || e.answers.answer || e.answers.observe || e.answers.probe || "Kept")}</p>` : e.kind === "decision" ? `<h3>${escapeHTML(e.title)}</h3><p>${e.card.selection ? `<strong>Your choice:</strong> ${escapeHTML(e.card.selection)}` : "No path named"}</p>` : `<p>${escapeHTML(e.originalText)}</p>`}
+      <div class="entry-meta"><span class="kind ${e.kind}">${e.kind === "decision" ? "Decision card" : e.kind === "reflection" ? "Evening reflection" : e.kind === "morning" ? "Morning check-in" : e.kind === "mantra" ? (e.comment ? "Mantra · your note" : "Mantra") : "Note"}</span><time>${formatDate(e.createdAt)}</time></div>
+      ${e.kind === "mantra" ? `<h3>${escapeHTML(e.line)}</h3>${e.comment ? `<p>${escapeHTML(e.comment)}</p>` : ""}${e.reason ? `<p class="field-note">${escapeHTML(e.reason)}</p>` : ""}` : e.kind === "morning" ? `<h3>${escapeHTML(e.intention || `Arriving: ${e.mood}`)}</h3>${e.mood && e.intention ? `<p class="field-note">Arriving: ${escapeHTML(e.mood)}</p>` : ""}<p>${escapeHTML(e.line)}</p>` : e.kind === "reflection" ? `<h3>${escapeHTML(e.question)}</h3><p>${escapeHTML(e.answers.reflect || e.answers.answer || e.answers.observe || e.answers.probe || "Kept")}</p>` : e.kind === "decision" ? `<h3>${escapeHTML(e.title)}</h3><p>${e.card.selection ? `<strong>Your choice:</strong> ${escapeHTML(e.card.selection)}` : "No path named"}</p>` : `<p>${escapeHTML(e.originalText)}</p>`}
       <div><button data-open="${e.id}">${e.kind === "decision" ? "Open card" : e.kind === "reflection" ? "Open reflection" : "View source"}</button><button class="danger" data-delete="${e.id}">${icon("trash")} Delete</button></div>
     </article>`).join("")}</div>
     <div class="journal-footer"><button data-action="export">Download a copy (JSON)</button><button class="danger-text" data-action="delete-all">Delete everything</button></div>`;
@@ -309,7 +309,7 @@ function journalRead() {
 
 function entryPanel(entry) {
   return `<div class="modal-backdrop" data-action="close-entry"><article class="source-panel" role="dialog" aria-modal="true" aria-labelledby="entry-title" data-panel>
-    <p class="eyebrow">${entry.kind === "decision" ? "Saved decision card" : entry.kind === "reflection" ? `Evening reflection · ${escapeHTML(entry.day || "")}` : entry.kind === "morning" ? `Morning check-in · ${escapeHTML(entry.day || "")}` : "Narrative → source"}</p>
+    <p class="eyebrow">${entry.kind === "decision" ? "Saved decision card" : entry.kind === "reflection" ? `Evening reflection · ${escapeHTML(entry.day || "")}` : entry.kind === "mantra" ? `Mantra · ${escapeHTML(entry.day || "")}` : entry.kind === "morning" ? `Morning check-in · ${escapeHTML(entry.day || "")}` : "Narrative → source"}</p>
     <h2 id="entry-title">${escapeHTML(entry.kind === "decision" ? entry.title : entry.kind === "reflection" ? "Your evening, in your words" : entry.kind === "morning" ? "A decision to handle well" : "Original entry")}</h2>
     ${entry.kind === "decision" ? `<p class="handback">${escapeHTML(entry.card.handback)}</p>${cardFields(entry.card, false)}` : `<blockquote>${escapeHTML(entry.originalText)}</blockquote>`}
     <dl class="meta"><div><dt>Source</dt><dd>${escapeHTML(entry.source)}</dd></div><div><dt>Saved</dt><dd>${escapeHTML(formatDate(entry.createdAt, true))}</dd></div></dl>
@@ -528,14 +528,43 @@ function morningLink() { return `${location.origin}${location.pathname}?open=mor
 function saveMorningSettings() { persist(MORNING_KEYS.settings, JSON.stringify(state.morningSettings)); }
 function mantraPick() {
   const focus = state.current === "Choose your focus" ? "" : state.current;
-  return selectMantra({ mood: morningMoodFor(state.journal), intention: morningIntentionFor(state.journal), events: state.calendarChips, focus }, state.mantraOffset || 0);
+  return selectMantra({ mood: morningMoodFor(state.journal), intention: morningIntentionFor(state.journal), events: state.calendarChips, focus, hidden: hiddenMantras() }, state.mantraOffset || 0);
 }
 function mantra() { return mantraPick().text; }
+function hiddenMantras() { try { return JSON.parse(localStorage.getItem(MANTRA_HIDDEN_KEY) || "[]"); } catch { return []; } }
+function mantraSheet(m) {
+  const s = state.mantraSheet;
+  return `<div class="mantra-sheet" role="dialog" aria-label="Today’s mantra">
+    <div class="ms-actions">
+      <button class="secondary" data-ms="log">Log it</button>
+      <button class="secondary" data-ms="comment" aria-expanded="${s.commenting}">Comment</button>
+      <button class="secondary" data-ms="new">New one${m.pool > 1 ? "" : ""}</button>
+    </div>
+    ${s.commenting ? `<form id="ms-form" class="ms-form">
+      <div class="chip-row">${MANTRA_COMMENT_CHIPS.map(c => `<button type="button" class="chip ${s.chip === c ? "on" : ""}" data-ms-chip="${escapeHTML(c)}" aria-pressed="${s.chip === c}">${escapeHTML(c)}</button>`).join("")}</div>
+      <label for="ms-input" class="sr-only">Your comment</label><input id="ms-input" maxlength="300" autocomplete="off" placeholder="Write your own" value="${escapeHTML(s.draft || "")}" />
+      <button class="primary">Save</button></form>` : ""}
+    <div class="ms-foot"><button class="plain-link" data-ms="hide">Not for me</button><button class="plain-link" data-ms="close">Close</button></div>
+  </div>`;
+}
+function saveMantra(comment) {
+  if (!state.storageOk) return showToast("This browser is blocking storage, so this can’t be saved.");
+  const m = mantraPick();
+  try {
+    const entry = createMantraEntry({ text: m.text, reason: m.reason, comment });
+    state.journal.unshift(entry);
+    if (!persistJournal()) { state.journal.shift(); return; }
+    state.mantraSheet = null; render(false); showToast(comment ? "Mantra and your note kept in your Journal" : "Mantra logged in your Journal");
+  } catch (error) {
+    if (error.message === "crisis") { state.mantraSheet = null; state.crisisFrom = "home"; return go("crisis"); }
+    showToast(error.message);
+  }
+}
 // One top card: a quiet daily mantra (tap for another), the current focus, then today's intention.
 function focusCard() {
   const intention = morningIntentionFor(state.journal), mood = morningMoodFor(state.journal);
   return `<article class="focus-card" aria-label="This morning and your current focus">
-    ${(() => { const m = mantraPick(); return `<button class="mantra" data-mo="next" aria-label="Today’s mantra — tap for another">${icon("sun")}<span>${escapeHTML(m.text)}${m.reason ? `<em class="mantra-why">${escapeHTML(m.reason)}</em>` : ""}</span></button>`; })()}
+    ${(() => { const m = mantraPick(); return `<button class="mantra" data-mo="sheet" aria-expanded="${!!state.mantraSheet}" aria-label="Today’s mantra — log it, comment, or see another">${icon("sun")}<span>${escapeHTML(m.text)}${m.reason ? `<em class="mantra-why">${escapeHTML(m.reason)}</em>` : ""}</span></button>${state.mantraSheet ? mantraSheet(m) : ""}`; })()}
     <div class="now-next" role="group" aria-label="Now and next">
       <button class="focus" data-action="current"><small>Now</small><strong>${escapeHTML(state.current)}</strong></button>
       <button class="next-line" data-action="next"><small>Next</small><span>Likely interruption or obligation</span><em>${escapeHTML(nudgeSummary(state.nudges))}</em></button>
@@ -867,6 +896,20 @@ app.addEventListener("click", async event => {
 });
 
 app.addEventListener("click", event => {
+  const ms = event.target.closest("[data-ms], [data-ms-chip]");
+  if (ms) {
+    const s = state.mantraSheet || (state.mantraSheet = { commenting: false, chip: "", draft: "" });
+    const input = document.querySelector("#ms-input"); if (input) s.draft = input.value;
+    if (ms.dataset.msChip) { s.chip = s.chip === ms.dataset.msChip ? "" : ms.dataset.msChip; return render(false); }
+    switch (ms.dataset.ms) {
+      case "log": return saveMantra("");
+      case "comment": s.commenting = !s.commenting; render(false); return document.querySelector("#ms-input")?.focus();
+      case "new": state.mantraOffset = (state.mantraOffset || 0) + 1; s.commenting = false; s.chip = ""; s.draft = ""; return render(false);
+      case "hide": { const h = hiddenMantras(); h.push(mantra()); persist(MANTRA_HIDDEN_KEY, JSON.stringify(h)); state.mantraSheet = null; render(false); return showToast("Won’t show that one again on this device"); }
+      case "close": state.mantraSheet = null; return render(false);
+    }
+    return;
+  }
   const t = event.target.closest("[data-mo], [data-mo-chip], [data-mo-mood]");
   if (!t) return;
   if (t.dataset.moMood) { const m = state.morning || (state.morning = { pick: "", mood: "" }); m.mood = m.mood === t.dataset.moMood ? "" : t.dataset.moMood; return render(false); }
@@ -874,7 +917,7 @@ app.addEventListener("click", event => {
   switch (t.dataset.mo) {
     case "open": return openMorning();
     case "open-keep": return go("morning");
-    case "next": state.mantraOffset = ((state.mantraOffset || 0) + 1) % LINES.length; return render(false);
+    case "sheet": state.mantraSheet = state.mantraSheet ? null : { commenting: false, chip: "", draft: "" }; return render(false);
     case "later": state.morning = null; clearMorningLink(); return go("home");
     case "ics": state.morningSettings.icsAdded = true; saveMorningSettings(); downloadMorningICS(); return render(false);
   }
@@ -882,6 +925,7 @@ app.addEventListener("click", event => {
 
 app.addEventListener("submit", event => {
   const id = event.target.id;
+  if (id === "ms-form") { event.preventDefault(); const s = state.mantraSheet || {}; const typed = document.querySelector("#ms-input").value.trim(); return saveMantra([s.chip, typed].filter(Boolean).join(" — ")); }
   if (id === "mo-form") { event.preventDefault(); return saveMorning(document.querySelector("#mo-input").value.trim()); }
   if (id === "mo-time-form") {
     event.preventDefault();

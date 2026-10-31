@@ -249,3 +249,10 @@ code { font-size: .72rem; word-break: break-all; }
 .next-line span { font-weight: 700; font-size: .98rem; }
 .next-line em { font-style: normal; font-size: .72rem; color: #8a978f; }
 @media (prefers-color-scheme: dark) { .now-next::before { background: linear-gradient(#8fc3a9, rgba(143,195,169,.2)); } .now-next > button::before { background: #8fc3a9; } .now-next > .next-line::before { background: #202925; border-color: #8fc3a9; } .next-line small, .next-line em { color: #9fb0a7; } }
+.mantra-sheet { display: grid; gap: 10px; padding: 12px; border-radius: 18px; background: #f6f1e8; border: 1px solid #eadfcd; }
+.ms-actions { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.ms-actions .secondary { padding: 10px 6px; font-size: .86rem; }
+.ms-form { display: grid; gap: 8px; }
+.ms-form input { width: 100%; box-sizing: border-box; }
+.ms-foot { display: flex; justify-content: space-between; font-size: .8rem; }
+@media (prefers-color-scheme: dark) { .mantra-sheet { background: #26302b; border-color: #3a4740; } }

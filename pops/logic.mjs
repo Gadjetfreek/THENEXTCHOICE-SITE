@@ -2,7 +2,7 @@
 // No network, no AI model, no hidden answer. Everything here is deterministic
 // so it can be unit-tested and reasoned about.
 
-export const APP_VERSION = "0.3.3-beta";
+export const APP_VERSION = "0.3.4-beta";
 
 export const STORAGE_KEYS = Object.freeze({
   journal: "pops.journal.v1", // same key as PR #17 so earlier notes survive the upgrade
@@ -274,6 +274,7 @@ export function normalizeEntry(entry) {
   if (!entry || typeof entry !== "object" || typeof entry.id !== "string" || !entry.createdAt) return null;
   const { messages: _messages, transcript: _transcript, ...rest } = entry;
   if (rest.kind === "decision" && rest.card) return rest;
+  if (rest.kind === "mantra" && typeof rest.line === "string" && typeof rest.originalText === "string") return rest;
   if (rest.kind === "morning" && typeof rest.intention === "string" && typeof rest.originalText === "string") return rest;
   if (rest.kind === "reflection" && rest.answers && typeof rest.originalText === "string") return rest;
   if (typeof rest.originalText !== "string" || !rest.originalText) return null;

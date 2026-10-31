@@ -129,15 +129,27 @@ export function mantraContext({ mood = "", intention = "", events = [], focus = 
 }
 
 /** Deterministic: same day + same context → same mantra. `offset` steps through the matching set (tap for another). */
+export const MANTRA_COMMENT_CHIPS = Object.freeze(["Needed this", "Not today", "Made me think"]);
+export const MANTRA_HIDDEN_KEY = "pops.mantra.hidden.v1";
+/** A mantra the user chose to log (optionally with a comment). Explicit Save only; crisis check on typed text. */
+export function createMantraEntry({ text, reason = "", comment = "" }, now = new Date(), id = crypto.randomUUID()) {
+  const line = cleanText(text, 300), note = cleanText(comment, 300);
+  if (!line) throw new Error("No mantra to keep.");
+  if (note && eveningSafety(note) === "crisis") throw new Error("crisis");
+  return { id, kind: "mantra", createdAt: now.toISOString(), day: dayKey(now), source: "Saved by you from today’s mantra on this device",
+    line, reason: cleanText(reason, 80), comment: note, originalText: [line, note && `My note: ${note}`].filter(Boolean).join("\n") };
+}
 export function selectMantra(context = {}, offset = 0) {
   const date = context.date || new Date();
+  const hidden = new Set(context.hidden || []);
+  const BANK = MANTRAS.filter(m => !hidden.has(m.t)).length ? MANTRAS.filter(m => !hidden.has(m.t)) : MANTRAS;
   const levels = mantraContext({ ...context, date });
   const contextual = levels.slice(0, -1).some(l => l.tags.length);
   if (!contextual) {
-    const i = (lineIndexForDate(date) + offset) % MANTRAS.length;
-    return { text: MANTRAS[i].t, tag: "", reason: "", pool: MANTRAS.length };
+    const i = (lineIndexForDate(date) + offset) % BANK.length;
+    return { text: BANK[i].t, tag: "", reason: "", pool: BANK.length };
   }
-  const scored = MANTRAS.map((m, i) => ({ i, m, score: levels.reduce((sum, l) => sum + l.tags.filter(t => m.tags.includes(t)).length * l.weight, 0) }));
+  const scored = BANK.map((m, i) => ({ i, m, score: levels.reduce((sum, l) => sum + l.tags.filter(t => m.tags.includes(t)).length * l.weight, 0) }));
   const best = Math.max(...scored.map(x => x.score));
   const pool = scored.filter(x => x.score === best);
   const pick = pool[(((dayNumber(date) * 7 + offset) % pool.length) + pool.length) % pool.length];
