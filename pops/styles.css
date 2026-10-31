@@ -278,3 +278,4 @@ code { font-size: .72rem; word-break: break-all; }
   .fn-button, .fn-row { background: #232d28; border-color: #33423a; } .fn-button small, .fn-row small, .sheet-title { color: #9fb0a7; }
   .bottom-sheet, .mantra-sheet.bottom-sheet { background: #1b2420; } .sheet-grip { background: #3a4740; }
 }
+@media (prefers-color-scheme: dark) { .bottom-sheet .plain-link, .ms-foot .plain-link { color: #c3d0c9; } .focus-card .mantra { border-bottom-color: rgba(255,255,255,.08); } }
