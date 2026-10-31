@@ -3,6 +3,11 @@ import {
   STORAGE_KEYS, VALUE_LENS, answerBeat, assessSafety, beatsFor, buildCard, cleanText, createDecisionEntry, createJournalEntry,
   createSession, exportJournal, goBack, isComplete, jumpTo, nudgeSummary, parseJournal, selectOptions, skipBeat
 } from "./logic.mjs";
+import {
+  DEFAULT_REMINDER, EVENING_KEYS, MOOD_CHIPS, OBSERVE_CHIPS, POPR_STAGES, REFLECT_CHIPS, buildReminderICS, createReflectionEntry,
+  dayKey, eveningSafety, formatTime, knownPeople, parseICSEvents, probeFor, questionForDate, reflectionStats, reminderDue,
+  statsLine, suggestsDecision
+} from "./evening.mjs";
 
 const app = document.querySelector("#app");
 const toast = document.querySelector("#toast");
@@ -22,7 +27,10 @@ const state = {
   journalMode: "read",
   openEntryId: null,
   savedSessionId: null,
-  storageOk: storageAvailable()
+  storageOk: storageAvailable(),
+  evening: null, // the active evening walk — memory only until Save
+  eveningSettings: { time: DEFAULT_REMINDER, notify: false, ...readJSON(EVENING_KEYS.settings, {}) },
+  calendarChips: [] // titles read from a picked .ics file — memory only, never stored
 };
 
 function safeGet(key) { try { return localStorage.getItem(key); } catch { return null; } }
@@ -54,7 +62,8 @@ const ICONS = {
   lock: '<rect x="5" y="10" width="14" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/>',
   trash: '<path d="M4 7h16M9 7V4h6v3m3 0-1 14H7L6 7m4 4v6m4-6v6"/>',
   heart: '<path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10Z"/>',
-  plus: '<path d="M12 5v14M5 12h14"/>'
+  plus: '<path d="M12 5v14M5 12h14"/>',
+  moon: '<path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5Z"/>'
 };
 function icon(name) { return `<svg class="icon" viewBox="0 0 24 24" aria-hidden="true">${ICONS[name]}</svg>`; }
 
@@ -89,6 +98,7 @@ function renderHome() {
       <span>${icon("current")}<small>Current</small></span>
       <strong>${escapeHTML(state.current)}</strong>
     </button>
+    ${eveningHomeCard()}
     <div class="action-grid" aria-label="POPS sections">
       ${tile("attend", "Attend", true)}${tile("relate", "Relate", true)}
       ${tile("pause", "Pause", false, state.session && !isComplete(state.session) ? "Resume reflection" : "Bring a real choice")}${tile("reflect", "Reflect", true)}
@@ -256,10 +266,11 @@ function renderCrisis() {
         <a class="secondary" href="https://988lifeline.org/chat/" target="_blank" rel="noopener noreferrer">Chat at 988lifeline.org</a>
         <a class="secondary" href="tel:911">In immediate danger? Call 911</a>
       </div>
-      <p class="field-note">988 serves the US. Outside the US, call your local emergency number. ${state.crisisFrom === "input" ? escapeHTML(CRISIS_MESSAGE.notStored) : ""}</p>
+      <p class="field-note">988 serves the US. Outside the US, call your local emergency number. ${state.crisisFrom === "input" || state.crisisFrom === "evening" ? escapeHTML(CRISIS_MESSAGE.notStored) : ""}</p>
       <div class="crisis-resume">
         ${state.session && !isComplete(state.session) && state.crisisFrom === "input" ? '<button data-action="crisis-resume">I’m safe right now — continue the reflection</button>' : ""}
         ${state.crisisFrom === "direct" && state.session ? '<button data-action="crisis-resume">I’m okay — go back</button>' : ""}
+        ${state.evening && state.crisisFrom === "evening" ? '<button data-eva="resume">I’m safe right now — continue the reflection</button>' : ""}
         <button data-action="crisis-end">End and return home</button>
       </div>
     </div></section>`;
@@ -292,17 +303,17 @@ function journalAdd() {
 function journalRead() {
   if (!state.journal.length) return `<div class="card empty"><p>No Journal entries yet.</p><p class="field-note">Finish a Pause and tap Save, or add a note in your own words.</p><button class="primary" data-journal-mode="add">Add your first entry</button></div>`;
   return `<div class="entry-list">${state.journal.map(e => `<article class="card entry">
-      <div class="entry-meta"><span class="kind ${e.kind}">${e.kind === "decision" ? "Decision card" : "Note"}</span><time>${formatDate(e.createdAt)}</time></div>
-      ${e.kind === "decision" ? `<h3>${escapeHTML(e.title)}</h3><p>${e.card.selection ? `<strong>Your choice:</strong> ${escapeHTML(e.card.selection)}` : "No path named"}</p>` : `<p>${escapeHTML(e.originalText)}</p>`}
-      <div><button data-open="${e.id}">${e.kind === "decision" ? "Open card" : "View source"}</button><button class="danger" data-delete="${e.id}">${icon("trash")} Delete</button></div>
+      <div class="entry-meta"><span class="kind ${e.kind}">${e.kind === "decision" ? "Decision card" : e.kind === "reflection" ? "Evening reflection" : "Note"}</span><time>${formatDate(e.createdAt)}</time></div>
+      ${e.kind === "reflection" ? `<h3>${escapeHTML(e.question)}</h3><p>${escapeHTML(e.answers.reflect || e.answers.answer || e.answers.observe || e.answers.probe || "Kept")}</p>` : e.kind === "decision" ? `<h3>${escapeHTML(e.title)}</h3><p>${e.card.selection ? `<strong>Your choice:</strong> ${escapeHTML(e.card.selection)}` : "No path named"}</p>` : `<p>${escapeHTML(e.originalText)}</p>`}
+      <div><button data-open="${e.id}">${e.kind === "decision" ? "Open card" : e.kind === "reflection" ? "Open reflection" : "View source"}</button><button class="danger" data-delete="${e.id}">${icon("trash")} Delete</button></div>
     </article>`).join("")}</div>
     <div class="journal-footer"><button data-action="export">Download a copy (JSON)</button><button class="danger-text" data-action="delete-all">Delete everything</button></div>`;
 }
 
 function entryPanel(entry) {
   return `<div class="modal-backdrop" data-action="close-entry"><article class="source-panel" role="dialog" aria-modal="true" aria-labelledby="entry-title" data-panel>
-    <p class="eyebrow">${entry.kind === "decision" ? "Saved decision card" : "Narrative → source"}</p>
-    <h2 id="entry-title">${escapeHTML(entry.kind === "decision" ? entry.title : "Original entry")}</h2>
+    <p class="eyebrow">${entry.kind === "decision" ? "Saved decision card" : entry.kind === "reflection" ? `Evening reflection · ${escapeHTML(entry.day || "")}` : "Narrative → source"}</p>
+    <h2 id="entry-title">${escapeHTML(entry.kind === "decision" ? entry.title : entry.kind === "reflection" ? "Your evening, in your words" : "Original entry")}</h2>
     ${entry.kind === "decision" ? `<p class="handback">${escapeHTML(entry.card.handback)}</p>${cardFields(entry.card, false)}` : `<blockquote>${escapeHTML(entry.originalText)}</blockquote>`}
     <dl class="meta"><div><dt>Source</dt><dd>${escapeHTML(entry.source)}</dd></div><div><dt>Saved</dt><dd>${escapeHTML(formatDate(entry.createdAt, true))}</dd></div></dl>
     <p class="field-note">No transcript was kept. No inferred relationship or meaning has been saved as fact.</p>
@@ -334,7 +345,7 @@ function formatDate(value, full = false) {
   return new Intl.DateTimeFormat(undefined, full ? { dateStyle: "full", timeStyle: "long" } : { dateStyle: "medium", timeStyle: "short" }).format(new Date(value));
 }
 
-const VIEWS = { settings: renderSettings, home: renderHome, about: renderAbout, current: renderCurrent, start: renderStart, flow: renderFlow, crisis: renderCrisis, journal: renderJournal, next: renderNext };
+const VIEWS = { settings: renderSettings, home: renderHome, about: renderAbout, current: renderCurrent, start: renderStart, flow: renderFlow, crisis: renderCrisis, journal: renderJournal, next: renderNext, evening: renderEvening, reminders: renderReminders };
 function render(focus = true) {
   (VIEWS[state.view] || renderHome)();
   if (focus) {
@@ -418,7 +429,7 @@ app.addEventListener("click", event => {
     }
     case "crisis-direct": state.crisisFrom = "direct"; state.returnView = state.view; return go("crisis");
     case "crisis-resume": return go(state.crisisFrom === "direct" ? (state.returnView || "home") : "flow");
-    case "crisis-end": state.session = null; state.returnTo = null; return go("home");
+    case "crisis-end": state.session = null; state.evening = null; clearEveningLink(); state.returnTo = null; return go("home");
     case "close-entry": state.openEntryId = null; return render(false);
     case "export": return exportFile();
     case "delete-all":
@@ -498,6 +509,303 @@ window.addEventListener("beforeunload", event => {
 if ("serviceWorker" in navigator && location.protocol !== "file:") {
   window.addEventListener("load", () => navigator.serviceWorker.register("./service-worker.js").catch(() => {}));
 }
-render(false);
+
+// =========================================================================== Evening reflection (POPR)
+// Pause · Observe · Probe · Reflect. The walk lives in memory only; nothing is written until Save.
+const EV_STEPS = ["question", "pause", "observe", "people", "probe", "reflect", "review"];
+const EV_STAGE = { question: 0, pause: 0, observe: 1, people: 1, probe: 2, reflect: 3, review: 3 };
+
+function eveningStats() { return reflectionStats(state.journal); }
+function eveningLink() { return `${location.origin}${location.pathname}?open=evening#evening`; }
+function clearEveningLink() {
+  if (location.hash === "#evening" || /[?&]open=evening/.test(location.search)) history.replaceState(null, "", location.pathname);
+}
+
+function eveningHomeCard() {
+  const stats = eveningStats();
+  const due = reminderDue(new Date(), state.eveningSettings.time, stats.doneToday);
+  return `${due ? `<div class="ev-banner" role="status">${icon("moon")}<p>It’s past ${escapeHTML(formatTime(state.eveningSettings.time))}. Tonight’s question is here whenever you are — no pressure.</p><button data-eva="open">Open</button></div>` : ""}
+    <button class="evening-card" data-eva="open">
+      <span>${icon("moon")}<small>Evening · POPR moment</small></span>
+      <strong>${stats.doneToday ? "Tonight’s reflection is kept" : "Tonight’s question"}</strong>
+      <em>${escapeHTML(statsLine(stats))}</em>
+    </button>`;
+}
+
+function openEvening() {
+  const today = dayKey();
+  if (!state.evening || state.evening.date !== today) {
+    state.evening = { date: today, question: questionForDate(new Date()).q, chips: questionForDate(new Date()).chips, step: 0, answers: {}, people: [], decisionForming: false, savedId: null, profShown: false };
+  }
+  go("evening");
+}
+
+function routeFromURL(fromHashChange) {
+  const wantsEvening = location.hash === "#evening" || new URLSearchParams(location.search).get("open") === "evening";
+  if (wantsEvening) return openEvening();
+  if (!fromHashChange) render(false);
+}
+
+function evStepChips(step, ev) {
+  if (step === "question") return ev.chips;
+  if (step === "pause") return MOOD_CHIPS;
+  if (step === "observe") return OBSERVE_CHIPS;
+  if (step === "probe") return probeFor({ ...ev.answers, people: ev.people }).chips;
+  if (step === "reflect") return REFLECT_CHIPS;
+  return [];
+}
+
+function evPrompt(step, ev) {
+  return {
+    question: [ev.question, "Tap what fits, or write your own. There’s no right answer."],
+    pause: ["Take one slow breath. You’ve arrived at the end of the day.", "Optional: how are you arriving right now?"],
+    observe: ["What actually happened today?", "Facts first — what you did, saw, or heard."],
+    people: ["Who did you spend time with, or what was on your calendar?", "Optional. Names stay on this device and only become quick chips once you save."],
+    probe: [probeFor({ ...ev.answers, people: ev.people }).q, "One deeper look. Skip it if it doesn’t fit tonight."],
+    reflect: ["What are you carrying into tomorrow?", "An intention, a question, or nothing at all."]
+  }[step];
+}
+
+function renderEvening() {
+  const ev = state.evening;
+  if (!ev) return openEvening();
+  const step = EV_STEPS[ev.step];
+  const stage = EV_STAGE[step];
+  const track = `<div class="stage-track" aria-label="Stage ${stage + 1} of 4: ${POPR_STAGES[stage]}">${POPR_STAGES.map((s, i) => `<span class="${i === stage ? "active" : i < stage ? "done" : ""}">${s}</span>`).join("")}</div>
+    <div class="progress" aria-hidden="true"><span style="width:${Math.round((ev.step / (EV_STEPS.length - 1)) * 100)}%"></span></div>`;
+  const head = header("Evening", "A 3–5 minute POPR moment: Pause, Observe, Probe, Reflect.", { back: "ev-stop", right: `<button class="icon-button" data-action="ev-reminders" data-eva="reminders" aria-label="Reminder settings">${icon("settings")}</button>` });
+  if (step === "review") return renderEveningReview(head, track);
+  const [prompt, help] = evPrompt(step, ev);
+  const existing = step === "people" ? "" : ev.answers[step === "question" ? "answer" : step === "pause" ? "mood" : step] || "";
+  const chips = evStepChips(step, ev);
+  const body = step === "people" ? evPeopleBody(ev) : `<div class="chip-row">${chips.map(c => `<button class="chip ${existing === c ? "on" : ""}" data-ev-chip="${escapeHTML(c)}">${escapeHTML(c)}</button>`).join("")}</div>
+    <form id="ev-form" class="free-form"><label for="ev-input">Write your own</label>
+      <textarea id="ev-input" rows="3" maxlength="1000">${escapeHTML(existing && !chips.includes(existing) ? existing : "")}</textarea>
+      <button class="primary">Continue</button></form>`;
+  app.innerHTML = `<section>${head}${track}
+    <div class="card conversation" data-ev-step="${step}">
+      ${step === "question" ? '<p class="lens-chip">Tonight’s question</p>' : ""}
+      <p class="question" id="q">${escapeHTML(prompt)}</p>
+      <p class="help">${escapeHTML(help)}</p>
+      ${ev.professional && !ev.profShown ? `<p class="notice">${escapeHTML(PROFESSIONAL_NOTE)}</p>` : ""}
+      ${body}
+      <div class="escape-row">
+        <button data-eva="back" ${ev.step === 0 ? "disabled" : ""}>Go back</button>
+        <button data-eva="skip">Skip</button>
+        <button data-eva="stop">Stop</button>
+      </div>
+    </div>
+    <p class="step-count">Step ${ev.step + 1} of ${EV_STEPS.length - 1} · nothing is saved until you tap Save</p>
+    ${helpLink}</section>`;
+  if (ev.professional) ev.profShown = true;
+}
+
+function evPeopleBody(ev) {
+  const pool = [...new Set([...ev.people, ...knownPeople(state.journal), ...state.calendarChips])];
+  return `<div class="chip-row">${pool.map(p => `<button class="chip ${ev.people.includes(p) ? "on" : ""}" data-ev-person="${escapeHTML(p)}" aria-pressed="${ev.people.includes(p)}">${escapeHTML(p)}</button>`).join("") || '<p class="field-note">No saved names yet — add one below.</p>'}</div>
+    <form id="ev-person-form" class="inline-form"><label for="ev-person" class="sr-only">Write your own</label>
+      <input id="ev-person" maxlength="80" autocomplete="off" placeholder="Write your own (a name or a plan)" /><button class="add" aria-label="Add">${icon("plus")}</button></form>
+    <label class="file-pick"><input type="file" id="ev-ics" accept=".ics,text/calendar" /> Import today’s calendar (.ics file)</label>
+    <p class="field-note">The file is read on this device only — no account, no connection. Event titles appear as chips; nothing is kept unless you tap them and Save.</p>
+    <button class="primary" data-eva="people-done">${ev.people.length ? "Continue" : "Continue without names"}</button>`;
+}
+
+function evCompositeText(ev) {
+  return ["answer", "observe", "probe", "reflect"].map(k => ev.answers[k]).filter(Boolean).join(" · ").slice(0, 1000);
+}
+
+function renderEveningReview(head, track) {
+  const ev = state.evening;
+  const saved = !!ev.savedId;
+  const rows = [["Tonight’s question", ev.question], ["Your answer", ev.answers.answer], ["Arriving as", ev.answers.mood], ["What happened", ev.answers.observe],
+    ["People & plans", ev.people.join(", ")], [probeFor({ ...ev.answers, people: ev.people }).q, ev.answers.probe], ["Carrying into tomorrow", ev.answers.reflect]];
+  app.innerHTML = `<section>${head}${track}
+    <div class="card completion" data-ev-step="review">
+      <div class="soft-mark">☾</div>
+      <h2>That’s tonight’s pause.</h2>
+      <dl class="card-fields">${rows.map(([k, v]) => `<div><dt>${escapeHTML(k)}</dt><dd>${v ? escapeHTML(v) : '<span class="muted">Skipped</span>'}</dd></div>`).join("")}</dl>
+      <button class="chip toggle ${ev.decisionForming ? "on" : ""}" data-eva="toggle-decision" aria-pressed="${ev.decisionForming}">${ev.decisionForming ? "✓ " : ""}A decision is forming</button>
+      ${ev.decisionForming ? `<div class="bridge"><p class="field-note">Want to give it a proper look? POPS will start with your words from tonight. It still won’t choose for you.</p>
+        <div class="bridge-row"><button data-eva="explore-quick">Explore this with POPS · Quick</button><button data-eva="explore-full">Full</button></div></div>` : ""}
+      <p class="field-note">${saved ? "Kept in your Journal on this device." : "Nothing from tonight has been saved. If you leave now, it’s gone."}</p>
+      ${saved ? '<button class="primary" data-action="journal">Open Journal</button>' : '<button class="primary" data-eva="save">Save to Journal</button>'}
+      <button class="secondary" data-eva="done">${saved ? "Done" : "Done without saving"}</button>
+    </div>${helpLink}</section>`;
+}
+
+function evRecord(value) {
+  const ev = state.evening;
+  const step = EV_STEPS[ev.step];
+  const text = cleanText(value, 1000);
+  const level = eveningSafety(text);
+  if (level === "crisis") { state.crisisFrom = "evening"; return go("crisis"); }
+  if (level === "professional" && !ev.professional) { ev.professional = true; ev.profShown = false; }
+  const key = step === "question" ? "answer" : step === "pause" ? "mood" : step;
+  if (!text) { delete ev.answers[key]; } else ev.answers[key] = text;
+  if (step === "reflect" || step === "question" || step === "observe" || step === "probe") {
+    if (suggestsDecision(text) || text === "Yes — it’s forming") ev.decisionForming = true;
+  }
+  ev.step = Math.min(ev.step + 1, EV_STEPS.length - 1);
+  go("evening");
+}
+
+function evConfirmLeave() {
+  const ev = state.evening;
+  if (!ev || ev.savedId) return true;
+  const has = Object.keys(ev.answers).length || ev.people.length;
+  return !has || confirm("Leave tonight’s reflection? Nothing has been saved, so it will be gone.");
+}
+
+function evExplore(depth) {
+  const text = evCompositeText(state.evening);
+  startFlow(depth);
+  if (text) state.session.answers.decision = text; // prefilled; editable on the first question
+  render();
+}
+
+function saveEveningSettings() { persist(EVENING_KEYS.settings, JSON.stringify(state.eveningSettings)); }
+
+function downloadICS() {
+  const ics = buildReminderICS({ time: state.eveningSettings.time, url: eveningLink() });
+  const blob = new Blob([ics], { type: "text/calendar;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const link = Object.assign(document.createElement("a"), { href: url, download: "pops-evening-reminder.ics" });
+  document.body.append(link); link.click(); link.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1500);
+  showToast("Calendar file made on this device — open it to add the nightly reminder");
+}
+
+const notifySupported = () => "Notification" in window && "serviceWorker" in navigator;
+const isInstalled = () => matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
+
+function renderReminders() {
+  const s = state.eveningSettings;
+  const perm = notifySupported() ? Notification.permission : "unsupported";
+  app.innerHTML = `<section>${header("Evening reminder", "Free, private, and honest about its limits.", { back: "ev-reminders-back", right: " " })}
+    <div class="card conversation">
+      <form id="ev-time-form" class="free-form"><label for="ev-time">Reminder time</label>
+        <input id="ev-time" type="time" value="${escapeHTML(s.time)}" required /><button class="primary">Save time</button></form>
+      <p class="field-note">Currently ${escapeHTML(formatTime(s.time))}. After this time, Home shows a gentle banner until tonight’s reflection is kept.</p>
+    </div>
+    <h2 class="section-title">Most reliable: your calendar</h2>
+    <div class="card conversation">
+      <p class="help">Adds a daily 5-minute event with an alert at ${escapeHTML(formatTime(s.time))}. The event links straight to tonight’s question. Works on iPhone and Android — the file is made on this device.</p>
+      <button class="primary" data-eva="ics">Add nightly reminder to my calendar</button>
+      <p class="field-note">Deep link: <code>${escapeHTML(eveningLink())}</code></p>
+    </div>
+    <h2 class="section-title">App notifications (best effort)</h2>
+    <div class="card conversation">
+      <p class="help">${perm === "unsupported" ? "This browser doesn’t offer notifications here. On iPhone, add POPS to your Home Screen first (Share → Add to Home Screen), then open it from the icon." :
+        perm === "granted" ? (s.notify ? "On. POPS will show a local notification when it’s open or recently active after your reminder time." : "Allowed, but off.") :
+        perm === "denied" ? "Notifications are blocked for POPS in your browser settings." : "POPS can show a local notification after your reminder time."}</p>
+      ${perm !== "unsupported" && perm !== "denied" ? `<button class="secondary" data-eva="notify">${s.notify && perm === "granted" ? "Turn notifications off" : "Turn on notifications"}</button>` : ""}
+      <p class="limit-note"><strong>Honest limit:</strong> POPS has no server, so it can’t wake your phone at an exact time on its own. A notification only appears when POPS (or its background worker) is active after your reminder time${isInstalled() ? "" : ", and on iPhone only once POPS is installed to the Home Screen"}. True scheduled reminders will need a later native app — the calendar option above works today.</p>
+    </div></section>`;
+}
+
+async function checkReminder() {
+  const s = state.eveningSettings;
+  if (!s.notify || !notifySupported() || Notification.permission !== "granted") return;
+  const today = dayKey();
+  if (s.lastNotified === today || !reminderDue(new Date(), s.time, eveningStats().doneToday)) return;
+  s.lastNotified = today; saveEveningSettings();
+  const options = { body: questionForDate(new Date()).q, tag: "pops-evening", icon: "icons/pops-192.png", data: { url: "./?open=evening#evening" } };
+  try { const reg = await navigator.serviceWorker.ready; await reg.showNotification("POPS · Tonight’s question", options); }
+  catch { try { new Notification("POPS · Tonight’s question", options); } catch { /* not available */ } }
+}
+
+app.addEventListener("click", async event => {
+  const target = event.target.closest("[data-eva], [data-ev-chip], [data-ev-person], [data-action=ev-stop], [data-action=ev-reminders-back]");
+  if (!target || target.disabled) return;
+  const ev = state.evening;
+  const a = target.dataset.eva || target.dataset.action;
+  if (target.dataset.evChip) return evRecord(target.dataset.evChip);
+  if (target.dataset.evPerson) {
+    const p = target.dataset.evPerson;
+    ev.people = ev.people.includes(p) ? ev.people.filter(x => x !== p) : [...ev.people, p];
+    return render(false);
+  }
+  switch (a) {
+    case "open": return openEvening();
+    case "resume": return go("evening");
+    case "back": ev.step = Math.max(0, ev.step - 1); return go("evening");
+    case "skip": {
+      const step = EV_STEPS[ev.step];
+      if (step !== "people") delete ev.answers[step === "question" ? "answer" : step === "pause" ? "mood" : step];
+      ev.step = Math.min(ev.step + 1, EV_STEPS.length - 1); return go("evening");
+    }
+    case "people-done": ev.step += 1; return go("evening");
+    case "stop": case "ev-stop": case "done":
+      if (!evConfirmLeave()) return;
+      state.evening = null; state.calendarChips = []; clearEveningLink(); return go("home");
+    case "toggle-decision": ev.decisionForming = !ev.decisionForming; return render(false);
+    case "explore-quick": return evExplore("quick");
+    case "explore-full": return evExplore("full");
+    case "save": {
+      if (!state.storageOk) return showToast("This browser is blocking storage, so this can’t be saved.");
+      try {
+        const entry = createReflectionEntry({ question: ev.question, answers: { ...ev.answers, people: ev.people }, probeQuestion: probeFor({ ...ev.answers, people: ev.people }).q, decisionForming: ev.decisionForming });
+        state.journal.unshift(entry);
+        if (persistJournal()) { ev.savedId = entry.id; render(false); showToast("Kept in your Journal on this device"); } else state.journal.shift();
+      } catch (error) {
+        if (error.message === "crisis") { state.crisisFrom = "evening"; return go("crisis"); }
+        showToast(error.message);
+      }
+      return;
+    }
+    case "reminders": state.remindersFrom = state.view; return go("reminders");
+    case "ev-reminders-back": return go(state.remindersFrom === "evening" && state.evening ? "evening" : "home");
+    case "ics": return downloadICS();
+    case "notify": {
+      const s = state.eveningSettings;
+      if (s.notify && Notification.permission === "granted") { s.notify = false; saveEveningSettings(); return render(false); }
+      const result = await Notification.requestPermission();
+      s.notify = result === "granted"; saveEveningSettings(); render(false);
+      showToast(s.notify ? "Notifications on — shown locally, best effort" : "Notifications weren’t allowed");
+      return checkReminder();
+    }
+  }
+});
+
+app.addEventListener("submit", event => {
+  const id = event.target.id;
+  if (id === "ev-form") { event.preventDefault(); return evRecord(document.querySelector("#ev-input").value); }
+  if (id === "ev-person-form") {
+    event.preventDefault();
+    const value = cleanText(document.querySelector("#ev-person").value, 80);
+    if (!value) return;
+    if (eveningSafety(value) === "crisis") { state.crisisFrom = "evening"; return go("crisis"); }
+    if (!state.evening.people.includes(value)) state.evening.people.push(value);
+    render(false); document.querySelector("#ev-person")?.focus(); return;
+  }
+  if (id === "ev-time-form") {
+    event.preventDefault();
+    const value = document.querySelector("#ev-time").value;
+    if (!/^\d{2}:\d{2}$/.test(value)) return showToast("Pick a time first.");
+    state.eveningSettings.time = value; state.eveningSettings.lastNotified = null; saveEveningSettings(); render(false);
+    showToast(`Reminder time set to ${formatTime(value)} — saved on this device`);
+  }
+});
+
+app.addEventListener("change", event => {
+  if (event.target.id !== "ev-ics") return;
+  const file = event.target.files?.[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    const titles = parseICSEvents(String(reader.result), dayKey());
+    state.calendarChips = [...new Set([...state.calendarChips, ...titles])].slice(0, 20);
+    render(false);
+    showToast(titles.length ? `${titles.length} event${titles.length === 1 ? "" : "s"} from today — tap any that fit` : "No events for today in that file");
+  };
+  reader.readAsText(file);
+});
+
+// --------------------------------------------------------------------------- Start
+routeFromURL(false);
+window.addEventListener("hashchange", () => routeFromURL(true));
+checkReminder();
+document.addEventListener("visibilitychange", () => { if (!document.hidden) { checkReminder(); if (state.view === "home") render(false); } });
+setInterval(checkReminder, 60000);
 // exposed for tests only — no data, just the beat ids
 window.__POPS__ = { version: APP_VERSION, beats: BEATS.map(b => b.id) };

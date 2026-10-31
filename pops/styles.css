@@ -128,6 +128,25 @@ button.primary { min-height: 52px; border-radius: 15px; padding: 13px; }
 .journal-footer .danger-text { color: #923e37; }
 .source-panel .meta { border-top: 1px solid #dde3df; padding-top: 6px; }
 .home-screen > .primary, section > .primary { margin-top: 20px; }
+.evening-card { width: 100%; margin-top: 13px; border-radius: 26px; padding: 20px 22px; text-align: left; display: grid; gap: 6px; border: 1px solid rgba(49, 95, 77, .25); background: linear-gradient(135deg, #2f4b5e, #315f4d); color: #f4f1e8; box-shadow: 0 12px 34px rgba(36, 51, 46, .14); }
+.evening-card span { display: flex; align-items: center; gap: 9px; opacity: .85; }
+.evening-card small { font-weight: 800; letter-spacing: .06em; text-transform: uppercase; }
+.evening-card strong { font-size: 1.35rem; }
+.evening-card em { font-style: normal; font-size: .78rem; opacity: .85; }
+.ev-banner { display: flex; align-items: center; gap: 10px; margin-top: 13px; padding: 12px 14px; border-radius: 18px; background: #efe4d2; color: #5a3d22; }
+.ev-banner p { margin: 0; flex: 1; font-size: .82rem; line-height: 1.35; }
+.ev-banner .icon { width: 22px; min-width: 22px; }
+.ev-banner button { border: 0; border-radius: 12px; background: #5a3d22; color: #fff; padding: 8px 12px; font-weight: 700; }
+.chip-row { display: flex; flex-wrap: wrap; gap: 8px; margin: 6px 0 4px; }
+.chip { min-height: 42px; border: 1px solid #bec9c1; border-radius: 999px; background: #fff; padding: 9px 15px; font-size: .9rem; }
+.chip.on { background: #315f4d; border-color: #315f4d; color: #fff; }
+.chip.toggle { justify-self: start; }
+.file-pick { display: block; margin: 4px 0 6px; font-size: .85rem; font-weight: 700; }
+.file-pick input { width: auto; border: 0; padding: 6px 0; background: transparent; font-size: .8rem; }
+.bridge-row { display: grid; grid-template-columns: 1fr auto; gap: 8px; }
+.bridge-row button { min-height: 46px; border: 1px solid #315f4d; border-radius: 15px; background: #e5eee8; color: #24332e; padding: 10px 14px; font-weight: 700; }
+.kind.reflection { background: #e2e6f0; color: #2f4b5e; }
+code { font-size: .72rem; word-break: break-all; }
 @media (prefers-color-scheme: dark) {
   :root { color: #e7ece8; background: #141a17; }
   body { background: radial-gradient(circle at top, #1f2823 0, #141a17 60%); }
@@ -147,4 +166,9 @@ button.primary { min-height: 52px; border-radius: 15px; padding: 13px; }
   .notice { background: #222a38; color: #c9d3ea; }
   .lens-chip { background: #3a2a20; color: #f0b892; }
   .help-link { color: #f08f84; }
+  .chip, .bridge-row button { background: #1b2320; color: #e7ece8; border-color: #3a4842; }
+  .chip.on { background: #3f7a63; border-color: #3f7a63; color: #fff; }
+  .ev-banner { background: #3a2f22; color: #f0d9bb; }
+  .ev-banner button { background: #f0d9bb; color: #3a2f22; }
+  .kind.reflection { background: #263040; color: #b9c8e6; }
 }
