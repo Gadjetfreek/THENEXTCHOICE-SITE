@@ -102,10 +102,6 @@ function renderHome() {
       ${tile("pause", "Pause", false, state.session && !isComplete(state.session) ? "Resume reflection" : "Bring a real choice")}${tile("reflect", "Reflect", true)}
     </div>
     <span id="later-note" class="sr-only">Coming later</span>
-    <button class="next-card" data-action="next">
-      <span>${icon("next")}<span><small>Next</small><strong>Likely interruption or obligation</strong></span></span>
-      <em>${escapeHTML(nudgeSummary(state.nudges))}</em>
-    </button>
     ${eveningHomeCard()}
     ${setupHomeCard()}
     <p class="privacy-line">${icon("lock")} Nothing leaves this device. No account, no AI model, no server. Only what you choose to Save is kept, in this browser.</p>
@@ -540,7 +536,10 @@ function focusCard() {
   const intention = morningIntentionFor(state.journal), mood = morningMoodFor(state.journal);
   return `<article class="focus-card" aria-label="This morning and your current focus">
     ${(() => { const m = mantraPick(); return `<button class="mantra" data-mo="next" aria-label="Today’s mantra — tap for another">${icon("sun")}<span>${escapeHTML(m.text)}${m.reason ? `<em class="mantra-why">${escapeHTML(m.reason)}</em>` : ""}</span></button>`; })()}
-    <button class="focus" data-action="current"><small>Current focus</small><strong>${escapeHTML(state.current)}</strong></button>
+    <div class="now-next" role="group" aria-label="Now and next">
+      <button class="focus" data-action="current"><small>Now</small><strong>${escapeHTML(state.current)}</strong></button>
+      <button class="next-line" data-action="next"><small>Next</small><span>Likely interruption or obligation</span><em>${escapeHTML(nudgeSummary(state.nudges))}</em></button>
+    </div>
     ${intention || mood ? `<p class="mo-kept">${mood ? `Arriving ${escapeHTML(mood.toLowerCase())}` : ""}${mood && intention ? " · " : ""}${intention ? `Today I want to handle well: <strong>${escapeHTML(intention)}</strong>` : ""}</p>` : '<button class="mo-open" data-mo="open">+ Morning check-in: mood & a decision to handle well</button>'}
   </article>`;
 }

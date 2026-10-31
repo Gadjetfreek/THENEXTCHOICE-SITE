@@ -239,3 +239,13 @@ code { font-size: .72rem; word-break: break-all; }
 .home-bar span { font-weight: 700; font-size: .88rem; }
 .bar-badge { font-size: .7rem; color: #4d6b5c; letter-spacing: .02em; }
 @media (prefers-color-scheme: dark) { .home-bar { background: #1d2622; border-color: #33423a; } .home-bar button:active { background: #26322c; } .bar-badge { color: #9fb8aa; } }
+.now-next { position: relative; display: grid; gap: 6px; padding-left: 16px; }
+.now-next::before { content: ""; position: absolute; left: 3px; top: 10px; bottom: 14px; width: 2px; border-radius: 2px; background: linear-gradient(#2f5d4c, rgba(47,93,76,.2)); }
+.now-next > button { position: relative; }
+.now-next > button::before { content: ""; position: absolute; left: -17px; top: 7px; width: 10px; height: 10px; border-radius: 50%; background: #2f5d4c; }
+.now-next > .next-line::before { background: #fff; border: 2px solid #2f5d4c; width: 6px; height: 6px; }
+.next-line { display: grid; gap: 1px; text-align: left; border: 0; background: transparent; padding: 0; font: inherit; color: inherit; }
+.next-line small { font-weight: 800; letter-spacing: .06em; text-transform: uppercase; font-size: .7rem; color: #63736b; }
+.next-line span { font-weight: 700; font-size: .98rem; }
+.next-line em { font-style: normal; font-size: .72rem; color: #8a978f; }
+@media (prefers-color-scheme: dark) { .now-next::before { background: linear-gradient(#8fc3a9, rgba(143,195,169,.2)); } .now-next > button::before { background: #8fc3a9; } .now-next > .next-line::before { background: #202925; border-color: #8fc3a9; } .next-line small, .next-line em { color: #9fb0a7; } }
