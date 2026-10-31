@@ -90,6 +90,7 @@ function renderHome() {
   app.innerHTML = `<section class="home-screen">
     <div class="brand-row"><div><p class="eyebrow">Pause · Observe · Probe · Select</p><h1>POPS</h1></div>
       <div class="brand-actions">
+        <button class="journal-shortcut" data-eva="setup" aria-label="Set up POPS">${icon("settings")}<span>Setup</span></button>
         <button class="journal-shortcut" data-action="about" aria-label="About POPS">${icon("info")}<span>About</span></button>
         <button class="journal-shortcut" data-action="journal" aria-label="Open Journal">${icon("journal")}<span>Journal${state.journal.length ? ` · ${state.journal.length}` : ""}</span></button>
       </div>
@@ -99,6 +100,7 @@ function renderHome() {
       <strong>${escapeHTML(state.current)}</strong>
     </button>
     ${eveningHomeCard()}
+    ${setupHomeCard()}
     <div class="action-grid" aria-label="POPS sections">
       ${tile("attend", "Attend", true)}${tile("relate", "Relate", true)}
       ${tile("pause", "Pause", false, state.session && !isComplete(state.session) ? "Resume reflection" : "Bring a real choice")}${tile("reflect", "Reflect", true)}
@@ -345,7 +347,7 @@ function formatDate(value, full = false) {
   return new Intl.DateTimeFormat(undefined, full ? { dateStyle: "full", timeStyle: "long" } : { dateStyle: "medium", timeStyle: "short" }).format(new Date(value));
 }
 
-const VIEWS = { settings: renderSettings, home: renderHome, about: renderAbout, current: renderCurrent, start: renderStart, flow: renderFlow, crisis: renderCrisis, journal: renderJournal, next: renderNext, evening: renderEvening, reminders: renderReminders };
+const VIEWS = { settings: renderSettings, home: renderHome, about: renderAbout, current: renderCurrent, start: renderStart, flow: renderFlow, crisis: renderCrisis, journal: renderJournal, next: renderNext, evening: renderEvening, setup: renderSetup, reminders: renderSetup };
 function render(focus = true) {
   (VIEWS[state.view] || renderHome)();
   if (focus) {
@@ -560,7 +562,7 @@ function evPrompt(step, ev) {
     question: [ev.question, "Tap what fits, or write your own. There’s no right answer."],
     pause: ["Take one slow breath. You’ve arrived at the end of the day.", "Optional: how are you arriving right now?"],
     observe: ["What actually happened today?", "Facts first — what you did, saw, or heard."],
-    people: ["Who did you spend time with, or what was on your calendar?", "Optional. Names stay on this device and only become quick chips once you save."],
+    people: ["Who did you spend time with, or what was on your calendar?", ""],
     probe: [probeFor({ ...ev.answers, people: ev.people }).q, "One deeper look. Skip it if it doesn’t fit tonight."],
     reflect: ["What are you carrying into tomorrow?", "An intention, a question, or nothing at all."]
   }[step];
@@ -573,7 +575,7 @@ function renderEvening() {
   const stage = EV_STAGE[step];
   const track = `<div class="stage-track" aria-label="Stage ${stage + 1} of 4: ${POPR_STAGES[stage]}">${POPR_STAGES.map((s, i) => `<span class="${i === stage ? "active" : i < stage ? "done" : ""}">${s}</span>`).join("")}</div>
     <div class="progress" aria-hidden="true"><span style="width:${Math.round((ev.step / (EV_STEPS.length - 1)) * 100)}%"></span></div>`;
-  const head = header("Evening", "A 3–5 minute POPR moment: Pause, Observe, Probe, Reflect.", { back: "ev-stop", right: `<button class="icon-button" data-action="ev-reminders" data-eva="reminders" aria-label="Reminder settings">${icon("settings")}</button>` });
+  const head = header("Evening", "A 3–5 minute POPR moment: Pause, Observe, Probe, Reflect.", { back: "ev-stop", right: `<button class="icon-button" data-eva="setup" aria-label="Set up POPS">${icon("settings")}</button>` });
   if (step === "review") return renderEveningReview(head, track);
   const [prompt, help] = evPrompt(step, ev);
   const existing = step === "people" ? "" : ev.answers[step === "question" ? "answer" : step === "pause" ? "mood" : step] || "";
@@ -586,7 +588,7 @@ function renderEvening() {
     <div class="card conversation" data-ev-step="${step}">
       ${step === "question" ? '<p class="lens-chip">Tonight’s question</p>' : ""}
       <p class="question" id="q">${escapeHTML(prompt)}</p>
-      <p class="help">${escapeHTML(help)}</p>
+      ${help ? `<p class="help">${escapeHTML(help)}</p>` : ""}
       ${ev.professional && !ev.profShown ? `<p class="notice">${escapeHTML(PROFESSIONAL_NOTE)}</p>` : ""}
       ${body}
       <div class="escape-row">
@@ -601,12 +603,16 @@ function renderEvening() {
 }
 
 function evPeopleBody(ev) {
-  const pool = [...new Set([...ev.people, ...knownPeople(state.journal), ...state.calendarChips])];
-  return `<div class="chip-row">${pool.map(p => `<button class="chip ${ev.people.includes(p) ? "on" : ""}" data-ev-person="${escapeHTML(p)}" aria-pressed="${ev.people.includes(p)}">${escapeHTML(p)}</button>`).join("") || '<p class="field-note">No saved names yet — add one below.</p>'}</div>
+  const s = state.eveningSettings;
+  const known = s.names === false ? [] : knownPeople(state.journal);
+  const pool = [...new Set([...ev.people, ...known, ...(s.calendar ? state.calendarChips : [])])];
+  const cal = s.calendar
+    ? (state.calendarChips.length ? "" : `<label class="pill-button file-button" for="ev-ics">${icon("plus")} Import today’s calendar<input type="file" id="ev-ics" class="sr-only" accept=".ics,text/calendar" /></label>`)
+    : `<button class="perm-link" data-eva="setup-from-evening">Calendar · Permission needed</button>`;
+  return `${pool.length ? `<div class="chip-row">${pool.map(p => `<button class="chip ${ev.people.includes(p) ? "on" : ""}" data-ev-person="${escapeHTML(p)}" aria-pressed="${ev.people.includes(p)}">${escapeHTML(p)}</button>`).join("")}</div>` : ""}
     <form id="ev-person-form" class="inline-form"><label for="ev-person" class="sr-only">Write your own</label>
-      <input id="ev-person" maxlength="80" autocomplete="off" placeholder="Write your own (a name or a plan)" /><button class="add" aria-label="Add">${icon("plus")}</button></form>
-    <label class="file-pick"><input type="file" id="ev-ics" accept=".ics,text/calendar" /> Import today’s calendar (.ics file)</label>
-    <p class="field-note">The file is read on this device only — no account, no connection. Event titles appear as chips; nothing is kept unless you tap them and Save.</p>
+      <input id="ev-person" maxlength="80" autocomplete="off" placeholder="Write your own" /><button class="add" aria-label="Add">${icon("plus")}</button></form>
+    ${cal}
     <button class="primary" data-eva="people-done">${ev.people.length ? "Continue" : "Continue without names"}</button>`;
 }
 
@@ -678,29 +684,38 @@ function downloadICS() {
 const notifySupported = () => "Notification" in window && "serviceWorker" in navigator;
 const isInstalled = () => matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
 
-function renderReminders() {
+function setupStatus() {
   const s = state.eveningSettings;
   const perm = notifySupported() ? Notification.permission : "unsupported";
-  app.innerHTML = `<section>${header("Evening reminder", "Free, private, and honest about its limits.", { back: "ev-reminders-back", right: " " })}
-    <div class="card conversation">
-      <form id="ev-time-form" class="free-form"><label for="ev-time">Reminder time</label>
-        <input id="ev-time" type="time" value="${escapeHTML(s.time)}" required /><button class="primary">Save time</button></form>
-      <p class="field-note">Currently ${escapeHTML(formatTime(s.time))}. After this time, Home shows a gentle banner until tonight’s reflection is kept.</p>
+  return {
+    notify: perm === "unsupported" ? (isInstalled() ? "Unavailable" : "Needs install") : perm === "denied" ? "Blocked" : s.notify && perm === "granted" ? "On" : perm === "default" ? "Needed" : "Off",
+    reminder: s.icsAdded ? "On" : "Off",
+    calendar: s.calendar ? "On" : "Off",
+    names: s.names === false ? "Off" : "On"
+  };
+}
+function setupHomeCard() {
+  const st = setupStatus();
+  const on = Object.values(st).filter(v => v === "On").length;
+  return `<button class="setup-card" data-eva="setup"><span>${icon("settings")}<small>Set up POPS</small></span><strong>${on} of 4 on</strong><em>Notifications · reminder · calendar · names</em></button>`;
+}
+const badge = v => `<span class="status ${v === "On" ? "on" : v === "Needed" ? "need" : ""}">${v}</span>`;
+function renderSetup() {
+  const s = state.eveningSettings, st = setupStatus();
+  const back = state.setupFrom === "evening" && state.evening ? "Back to tonight’s reflection" : "Done";
+  app.innerHTML = `<section>${header("Set up POPS", "Everything stays on this device. Turn on only what helps.", { back: "setup-back", right: " " })}
+    <div class="card setup-list">
+      <div class="setup-item"><div><strong>Notifications</strong>${badge(st.notify)}<p class="field-note">${st.notify === "Needs install" ? "On iPhone: Share → Add to Home Screen, then open POPS from the icon." : st.notify === "Blocked" ? "Blocked in your browser settings." : "A local nudge after your reminder time, best effort."}</p></div>
+        ${["Needed", "Off", "On"].includes(st.notify) ? `<button class="secondary" data-eva="notify">${st.notify === "On" ? "Turn off" : "Allow"}</button>` : ""}</div>
+      <div class="setup-item"><div><strong>Nightly reminder</strong>${badge(st.reminder)}<p class="field-note">A daily calendar event at ${escapeHTML(formatTime(s.time))} that opens tonight’s question.</p>
+        <form id="ev-time-form" class="time-row"><label for="ev-time" class="sr-only">Reminder time</label><input id="ev-time" type="time" value="${escapeHTML(s.time)}" required /><button class="plain-link">Set time</button></form></div>
+        <button class="secondary" data-eva="ics">${st.reminder === "On" ? "Add again" : "Add to calendar"}</button></div>
+      <div class="setup-item"><div><strong>Calendar</strong>${badge(st.calendar)}<p class="field-note">Read today’s events from a calendar file on this device to suggest chips. No account, nothing uploaded or kept.</p></div>
+        <button class="secondary" data-eva="calendar">${st.calendar ? "Turn off" : "Connect"}</button></div>
+      <div class="setup-item"><div><strong>Remember names</strong>${badge(st.names)}<p class="field-note">Names from saved reflections become quick chips.</p></div>
+        <button class="secondary" data-eva="names">${st.names === "On" ? "Turn off" : "Turn on"}</button></div>
     </div>
-    <h2 class="section-title">Most reliable: your calendar</h2>
-    <div class="card conversation">
-      <p class="help">Adds a daily 5-minute event with an alert at ${escapeHTML(formatTime(s.time))}. The event links straight to tonight’s question. Works on iPhone and Android — the file is made on this device.</p>
-      <button class="primary" data-eva="ics">Add nightly reminder to my calendar</button>
-      <p class="field-note">Deep link: <code>${escapeHTML(eveningLink())}</code></p>
-    </div>
-    <h2 class="section-title">App notifications (best effort)</h2>
-    <div class="card conversation">
-      <p class="help">${perm === "unsupported" ? "This browser doesn’t offer notifications here. On iPhone, add POPS to your Home Screen first (Share → Add to Home Screen), then open it from the icon." :
-        perm === "granted" ? (s.notify ? "On. POPS will show a local notification when it’s open or recently active after your reminder time." : "Allowed, but off.") :
-        perm === "denied" ? "Notifications are blocked for POPS in your browser settings." : "POPS can show a local notification after your reminder time."}</p>
-      ${perm !== "unsupported" && perm !== "denied" ? `<button class="secondary" data-eva="notify">${s.notify && perm === "granted" ? "Turn notifications off" : "Turn on notifications"}</button>` : ""}
-      <p class="limit-note"><strong>Honest limit:</strong> POPS has no server, so it can’t wake your phone at an exact time on its own. A notification only appears when POPS (or its background worker) is active after your reminder time${isInstalled() ? "" : ", and on iPhone only once POPS is installed to the Home Screen"}. True scheduled reminders will need a later native app — the calendar option above works today.</p>
-    </div></section>`;
+    <button class="primary" data-eva="setup-back">${back}</button></section>`;
 }
 
 async function checkReminder() {
@@ -715,7 +730,7 @@ async function checkReminder() {
 }
 
 app.addEventListener("click", async event => {
-  const target = event.target.closest("[data-eva], [data-ev-chip], [data-ev-person], [data-action=ev-stop], [data-action=ev-reminders-back]");
+  const target = event.target.closest("[data-eva], [data-ev-chip], [data-ev-person], [data-action=ev-stop], [data-action=ev-reminders-back], [data-action=setup-back]");
   if (!target || target.disabled) return;
   const ev = state.evening;
   const a = target.dataset.eva || target.dataset.action;
@@ -753,12 +768,17 @@ app.addEventListener("click", async event => {
       }
       return;
     }
-    case "reminders": state.remindersFrom = state.view; return go("reminders");
-    case "ev-reminders-back": return go(state.remindersFrom === "evening" && state.evening ? "evening" : "home");
-    case "ics": return downloadICS();
+    case "reminders": case "setup": state.setupFrom = state.view === "evening" ? "evening" : "home"; return go("setup");
+    case "setup-from-evening": state.setupFrom = "evening"; return go("setup");
+    case "setup-back": case "ev-reminders-back": return go(state.setupFrom === "evening" && state.evening ? "evening" : "home");
+    case "ics": state.eveningSettings.icsAdded = true; saveEveningSettings(); downloadICS(); return render(false);
+    case "calendar": state.eveningSettings.calendar = !state.eveningSettings.calendar; if (!state.eveningSettings.calendar) state.calendarChips = []; saveEveningSettings(); render(false);
+      return showToast(state.eveningSettings.calendar ? "Calendar connected — import today’s events from the evening step" : "Calendar off");
+    case "names": state.eveningSettings.names = state.eveningSettings.names === false; saveEveningSettings(); return render(false);
     case "notify": {
       const s = state.eveningSettings;
       if (s.notify && Notification.permission === "granted") { s.notify = false; saveEveningSettings(); return render(false); }
+      if (!notifySupported()) return;
       const result = await Notification.requestPermission();
       s.notify = result === "granted"; saveEveningSettings(); render(false);
       showToast(s.notify ? "Notifications on — shown locally, best effort" : "Notifications weren’t allowed");
